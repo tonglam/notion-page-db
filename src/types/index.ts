@@ -29,9 +29,10 @@ export interface StorageConfig {
   bucketName: string;
   accessKeyId: string;
   secretAccessKey: string;
+  accountId?: string; // Cloudflare R2 account ID
   region?: string;
   usePresignedUrls?: boolean;
-  baseUrl?: string;
+  baseUrl?: string; // Public URL for R2 bucket
 }
 
 /**

@@ -18,13 +18,14 @@ import {
 import { IStorageService } from './StorageService.interface';
 
 /**
- * Implementation of the StorageService using AWS S3
+ * Implementation of the StorageService using Cloudflare R2
  * Handles image and file storage
  */
 export class StorageService implements IStorageService {
   private s3Client: S3Client;
   private config: StorageConfig;
   private bucketName: string;
+  private baseUrl: string;
 
   /**
    * Creates a new StorageService instance
@@ -33,14 +34,23 @@ export class StorageService implements IStorageService {
   constructor(config: StorageConfig) {
     this.config = config;
     this.bucketName = config.bucketName;
+    this.baseUrl = config.baseUrl || '';
 
-    this.s3Client = new S3Client({
-      region: config.region || 'us-east-1',
+    // Create client options
+    const clientOptions: any = {
+      region: config.region || 'auto',
       credentials: {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
       },
-    });
+    };
+
+    // Add endpoint for Cloudflare R2 if account ID is provided
+    if (config.accountId && config.provider.toLowerCase() === 'r2') {
+      clientOptions.endpoint = `https://${config.accountId}.r2.cloudflarestorage.com`;
+    }
+
+    this.s3Client = new S3Client(clientOptions);
   }
 
   /**
@@ -145,9 +155,21 @@ export class StorageService implements IStorageService {
         return await getSignedUrl(this.s3Client, command, { expiresIn });
       }
 
-      // Otherwise, construct the direct S3 URL
-      const region = this.config.region || 'us-east-1';
-      return `https://${this.bucketName}.s3.${region}.amazonaws.com/${key}`;
+      // For Cloudflare R2, use the public URL if configured
+      if (this.baseUrl) {
+        // Ensure baseUrl doesn't end with slash and key doesn't start with one
+        const normalizedBaseUrl = this.baseUrl.endsWith('/')
+          ? this.baseUrl.slice(0, -1)
+          : this.baseUrl;
+
+        const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
+
+        return `${normalizedBaseUrl}/${normalizedKey}`;
+      }
+
+      // Fallback to standard S3 URL format (should rarely be used with R2)
+      const region = this.config.region || 'auto';
+      return `https://${this.bucketName}.r2.${region}.cloudflarestorage.com/${key}`;
     } catch (error) {
       console.error('Error generating URL:', error);
       throw error;

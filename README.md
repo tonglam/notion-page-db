@@ -1,6 +1,6 @@
 # NotionPageDb Migration System
 
-A TypeScript-based system for migrating content from Notion pages to a structured Notion database with AI-powered enhancements.
+A TypeScript-based system for migrating content from Notion pages to a structured Notion database with AI-powered enhancements and Cloudflare R2 storage integration.
 
 ## Features
 
@@ -8,6 +8,7 @@ A TypeScript-based system for migrating content from Notion pages to a structure
 - **AI Enhancement**: Generate summaries, excerpts, tags, and images using AI
 - **Database Management**: Create or update entries in a Notion database
 - **Image Processing**: Download, generate, and store images
+- **Cloudflare R2 Storage**: Store and serve images using Cloudflare's S3-compatible storage
 - **Configurable**: Customize the migration process via configuration files or environment variables
 
 ## Installation
@@ -55,14 +56,27 @@ Alternatively, you can create a JSON configuration file:
     "imageModel": "dall-e-3"
   },
   "storage": {
-    "provider": "s3",
-    "accessKeyId": "your-aws-access-key-id",
-    "secretAccessKey": "your-aws-secret-access-key",
-    "bucketName": "your-bucket-name",
-    "region": "us-east-1"
+    "provider": "r2",
+    "accessKeyId": "your-r2-access-key-id",
+    "secretAccessKey": "your-r2-secret-access-key",
+    "accountId": "your-r2-account-id",
+    "bucketName": "your-r2-bucket-name",
+    "baseUrl": "your-r2-public-url",
+    "region": "auto"
   }
 }
 ```
+
+### Cloudflare R2 Setup
+
+This project uses Cloudflare R2 for storing and serving images. To set up R2:
+
+1. Create a Cloudflare account if you don't have one
+2. Navigate to R2 in the Cloudflare dashboard
+3. Create a new bucket for your images
+4. Create API tokens with read/write access
+5. Configure the public access for your bucket
+6. Update your `.env` file with the R2 credentials
 
 ## Usage
 
@@ -118,7 +132,7 @@ The system requires a Notion database with the following properties:
 - `Excerpt` (rich_text): Short excerpt for previews
 - `Mins Read` (number): Estimated reading time
 - `Image` (url): URL of the content image
-- `R2ImageUrl` (url): URL of the stored image
+- `R2ImageUrl` (url): URL of the stored image in Cloudflare R2
 - `Date Created` (date): Creation date of the content
 - `Status` (select): Status of the content (Draft, Ready, Review, Published)
 - `Original Page` (url): URL of the original Notion page

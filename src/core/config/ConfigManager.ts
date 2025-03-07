@@ -1,6 +1,6 @@
 import * as dotenv from 'dotenv';
-import * as fs from 'fs-extra';
-import * as path from 'path';
+import fs from 'fs';
+import path from 'path';
 import {
   AIConfig,
   NotionConfig,
@@ -107,23 +107,77 @@ export class ConfigManager implements IConfigManager {
   }
 
   /**
-   * Loads configuration from a file
-   * @param path The path to the config file
+   * Loads configuration from the specified path or environment variables
+   * @param configPath Optional path to the configuration file
    */
   loadConfig(configPath?: string): void {
-    if (!configPath) return;
-
     try {
-      const resolvedPath = path.resolve(process.cwd(), configPath);
-      if (fs.existsSync(resolvedPath)) {
-        const fileContent = fs.readFileSync(resolvedPath, 'utf8');
-        const fileConfig = JSON.parse(fileContent);
+      // Load configuration from .env file
+      dotenv.config();
 
-        // Deep merge the file config with the current config
-        this.mergeConfigs(this.config, fileConfig);
+      // Load environment variables for Notion
+      this.config.notion = {
+        apiKey: process.env.NOTION_API_KEY || '',
+        sourcePageId:
+          process.env.SOURCE_PAGE_ID || process.env.NOTION_SOURCE_PAGE_ID || '',
+        targetDatabaseId:
+          process.env.NOTION_DATABASE_ID ||
+          process.env.NOTION_TARGET_DATABASE_ID ||
+          '',
+        rateLimitDelay: process.env.NOTION_RATE_LIMIT_DELAY
+          ? parseInt(process.env.NOTION_RATE_LIMIT_DELAY)
+          : 350,
+      };
+
+      // Load environment variables for AI
+      this.config.ai = {
+        provider: process.env.AI_PROVIDER || 'openai',
+        apiKey: process.env.AI_API_KEY || process.env.OPENAI_API_KEY || '',
+        modelId: process.env.AI_MODEL_ID || '',
+        model: process.env.AI_MODEL || 'gpt-3.5-turbo',
+        imageModel: process.env.AI_IMAGE_MODEL || 'dall-e-3',
+        maxTokens: process.env.AI_MAX_TOKENS
+          ? parseInt(process.env.AI_MAX_TOKENS)
+          : 1000,
+        temperature: process.env.AI_TEMPERATURE
+          ? parseFloat(process.env.AI_TEMPERATURE)
+          : 0.7,
+      };
+
+      // Load environment variables for Storage (with support for R2)
+      this.config.storage = {
+        provider: process.env.STORAGE_PROVIDER || 'r2', // Default to R2
+        accessKeyId:
+          process.env.STORAGE_ACCESS_KEY_ID ||
+          process.env.R2_ACCESS_KEY_ID ||
+          '',
+        secretAccessKey:
+          process.env.STORAGE_SECRET_ACCESS_KEY ||
+          process.env.R2_SECRET_ACCESS_KEY ||
+          '',
+        bucketName:
+          process.env.STORAGE_BUCKET_NAME || process.env.R2_BUCKET_NAME || '',
+        accountId:
+          process.env.STORAGE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID || '',
+        region: process.env.STORAGE_REGION || 'auto',
+        baseUrl:
+          process.env.STORAGE_BASE_URL || process.env.R2_PUBLIC_URL || '',
+        usePresignedUrls: process.env.STORAGE_USE_PRESIGNED_URLS === 'true',
+      };
+
+      // If a configuration file is provided, load it and merge with environment config
+      if (configPath) {
+        const resolvedPath = path.resolve(process.cwd(), configPath);
+        if (fs.existsSync(resolvedPath)) {
+          const fileContent = fs.readFileSync(resolvedPath, 'utf8');
+          const fileConfig = JSON.parse(fileContent);
+
+          // Deep merge the file config with the current config
+          this.mergeConfigs(this.config, fileConfig);
+        }
       }
     } catch (error) {
-      console.error(`Error loading config from ${configPath}:`, error);
+      console.error('Error loading configuration:', error);
     }
   }
 

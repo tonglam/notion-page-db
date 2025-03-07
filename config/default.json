@@ -14,11 +14,13 @@
     "temperature": 0.7
   },
   "storage": {
-    "provider": "s3",
-    "accessKeyId": "your-aws-access-key-id",
-    "secretAccessKey": "your-aws-secret-access-key",
-    "bucketName": "your-bucket-name",
-    "region": "us-east-1",
+    "provider": "r2",
+    "accessKeyId": "your-r2-access-key-id",
+    "secretAccessKey": "your-r2-secret-access-key",
+    "accountId": "your-r2-account-id",
+    "bucketName": "your-r2-bucket-name",
+    "region": "auto",
+    "baseUrl": "your-r2-public-url",
     "usePresignedUrls": false
   }
 }

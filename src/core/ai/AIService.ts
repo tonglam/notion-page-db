@@ -1,6 +1,5 @@
 import axios from 'axios';
 import * as fs from 'fs-extra';
-import OpenAI from 'openai';
 import * as path from 'path';
 import {
   AIConfig,
@@ -11,14 +10,14 @@ import {
 import { IAIService } from './AIService.interface';
 
 /**
- * Implementation of the AIService using OpenAI
+ * Implementation of the AIService using API services
  * Handles AI-powered content enhancement and image generation
  */
 export class AIService implements IAIService {
-  private openai: OpenAI;
   private config: AIConfig;
+  private dashscopeApiKey: string;
+  private openaiApiKey: string;
   private modelName: string;
-  private imageModel: string;
 
   /**
    * Creates a new AIService instance
@@ -26,13 +25,21 @@ export class AIService implements IAIService {
    */
   constructor(config: AIConfig) {
     this.config = config;
-
-    this.openai = new OpenAI({
-      apiKey: config.apiKey,
-    });
-
     this.modelName = config.model || 'gpt-3.5-turbo';
-    this.imageModel = config.imageModel || 'dall-e-3';
+    this.openaiApiKey = config.apiKey;
+
+    // Get DashScope API key from environment variable
+    this.dashscopeApiKey = process.env.DASHSCOPE_API_KEY || '';
+
+    if (!this.dashscopeApiKey) {
+      console.warn(
+        'DASHSCOPE_API_KEY environment variable is not set. Image generation will not work.'
+      );
+    }
+
+    if (!this.openaiApiKey) {
+      console.warn('OpenAI API key is not set. Text generation will not work.');
+    }
   }
 
   /**
@@ -47,34 +54,45 @@ export class AIService implements IAIService {
     const maxLength = options?.maxLength || 250;
     const style = options?.style || 'concise';
 
-    // Create the prompt based on style
-    let prompt = '';
+    // Create the system message based on style
+    let systemMessage = 'You are a professional content summarizer. ';
 
     if (style === 'concise') {
-      prompt = `Summarize the following content concisely in ${maxLength} characters or less:\n\n${content}`;
+      systemMessage += 'Create concise and to-the-point summaries.';
     } else if (style === 'detailed') {
-      prompt = `Create a detailed summary of the following content, highlighting key points, in ${maxLength} characters or less:\n\n${content}`;
+      systemMessage += 'Create detailed summaries that highlight key points.';
     } else if (style === 'technical') {
-      prompt = `Create a technical summary of the following content, focusing on technical aspects and using appropriate terminology, in ${maxLength} characters or less:\n\n${content}`;
+      systemMessage +=
+        'Create technical summaries focusing on technical aspects using appropriate terminology.';
     } else {
-      prompt = `Summarize the following content in a casual, conversational style in ${maxLength} characters or less:\n\n${content}`;
+      systemMessage += 'Create casual, conversational summaries.';
     }
 
     try {
-      const response = await this.openai.chat.completions.create({
-        model: this.modelName,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a professional content summarizer.',
+      // Use OpenAI API directly
+      const response = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          model: this.modelName,
+          messages: [
+            { role: 'system', content: systemMessage },
+            {
+              role: 'user',
+              content: `Summarize the following content in ${maxLength} characters or less:\n\n${content}`,
+            },
+          ],
+          max_tokens: Math.ceil(maxLength / 4), // Approximate token count
+          temperature: 0.7,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.openaiApiKey}`,
+            'Content-Type': 'application/json',
           },
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: Math.ceil(maxLength / 4), // Approximate token count
-        temperature: 0.7,
-      });
+        }
+      );
 
-      const summary = response.choices[0]?.message?.content?.trim() || '';
+      const summary = response.data.choices[0]?.message?.content?.trim() || '';
 
       // Ensure the summary is within the maxLength constraint
       return summary.length > maxLength
@@ -110,20 +128,30 @@ export class AIService implements IAIService {
     }
 
     try {
-      const response = await this.openai.chat.completions.create({
-        model: this.modelName,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a professional headline writer and SEO expert.',
+      // Use OpenAI API directly
+      const response = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          model: this.modelName,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a professional headline writer and SEO expert.',
+            },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: 50, // Titles are short
+          temperature: 0.8, // Allow some creativity
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.openaiApiKey}`,
+            'Content-Type': 'application/json',
           },
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: 50, // Titles are short
-        temperature: 0.8, // Allow some creativity
-      });
+        }
+      );
 
-      let title = response.choices[0]?.message?.content?.trim() || '';
+      let title = response.data.choices[0]?.message?.content?.trim() || '';
 
       // Remove quotes if present (AI often puts titles in quotes)
       title = title.replace(/^['"](.*)['"]$/, '$1');
@@ -152,26 +180,37 @@ export class AIService implements IAIService {
     const prompt = `Extract ${maxKeywords} relevant keywords or keyphrases from the following content. Provide them as a comma-separated list. Focus on terms that would work well as tags or for SEO:\n\n${truncatedContent}`;
 
     try {
-      const response = await this.openai.chat.completions.create({
-        model: this.modelName,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an SEO expert and keyword analyst.',
+      // Use OpenAI API directly
+      const response = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          model: this.modelName,
+          messages: [
+            {
+              role: 'system',
+              content: 'You are an SEO expert and keyword analyst.',
+            },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: 150,
+          temperature: 0.5, // Lower temperature for more focused responses
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.openaiApiKey}`,
+            'Content-Type': 'application/json',
           },
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: 150,
-        temperature: 0.5, // Lower temperature for more focused responses
-      });
+        }
+      );
 
-      const keywordsText = response.choices[0]?.message?.content?.trim() || '';
+      const keywordsText =
+        response.data.choices[0]?.message?.content?.trim() || '';
 
       // Split by commas and clean up each keyword
       const keywords = keywordsText
         .split(/,\s*/)
-        .map((keyword) => keyword.trim())
-        .filter((keyword) => keyword.length > 0)
+        .map((keyword: string) => keyword.trim())
+        .filter((keyword: string) => keyword.length > 0)
         .slice(0, maxKeywords);
 
       return keywords;
@@ -180,13 +219,13 @@ export class AIService implements IAIService {
       // Fallback to simple word extraction
       return content
         .split(/\s+/)
-        .filter((word) => word.length > 5)
+        .filter((word: string) => word.length > 5)
         .slice(0, maxKeywords);
     }
   }
 
   /**
-   * Generates an image for the content
+   * Generates an image for the content using DashScope API
    * @param prompt The text prompt to generate the image from
    * @param options Options for image generation
    */
@@ -194,25 +233,115 @@ export class AIService implements IAIService {
     prompt: string,
     options?: ImageOptions
   ): Promise<ImageResult> {
-    const size = options?.size || '1024x1024';
-    const style = options?.style || 'vivid';
-    const quality = options?.quality || 'standard';
+    const size = options?.size || '1024*1024'; // DashScope format uses asterisk
+
+    if (!this.dashscopeApiKey) {
+      console.error('DASHSCOPE_API_KEY is not set. Cannot generate image.');
+      return {
+        url: '',
+        prompt,
+        success: false,
+        error: 'DASHSCOPE_API_KEY is not set. Cannot generate image.',
+      };
+    }
 
     try {
-      const response = await this.openai.images.generate({
-        model: this.imageModel,
-        prompt: prompt,
-        n: 1,
-        size: size as any,
-        style: style as any,
-        quality: quality as any,
-        response_format: 'url',
-      });
+      // Clean and enhance the prompt
+      const cleanPrompt = prompt.replace(/['"]/g, '').trim();
 
-      const imageUrl = response.data[0]?.url;
+      // Create a structured prompt based on the advanced formula
+      // 提示词 = 主体描述 + 场景描述 + 风格定义 + 镜头语言 + 光线设置 + 氛围词 + 细节修饰 + 技术参数
+
+      // Main subject description
+      const subjectDescription = `a professional technical illustration representing the concept of "${cleanPrompt}" WITHOUT ANY TEXT OR LABELS`;
+
+      // Scene description
+      const sceneDescription =
+        'in a clean, minimalist digital environment with subtle tech-related background elements';
+
+      // Style definition
+      const styleDefinition =
+        'modern digital art style with clean lines and a professional look, suitable for technical articles';
+
+      // Camera language
+      const cameraLanguage =
+        'frontal perspective with balanced composition, moderate depth of field focusing on the central concept';
+
+      // Lighting setup
+      const lightingSetup =
+        'soft, even lighting with subtle highlights to emphasize important elements, cool blue accent lighting';
+
+      // Atmosphere words
+      const atmosphereWords =
+        'informative, innovative, precise, and engaging atmosphere';
+
+      // Detail modifiers
+      const detailModifiers =
+        'with subtle grid patterns, simplified icons or symbols related to the prompt, using a cohesive color palette of blues, teals, and neutral tones';
+
+      // Technical parameters
+      const technicalParameters =
+        'high-resolution, sharp details, professional vector-like quality';
+
+      // Combine all components into a comprehensive prompt
+      const enhancedPrompt = `${subjectDescription} ${sceneDescription}. 
+      Style: ${styleDefinition}. 
+      Composition: ${cameraLanguage}. 
+      Lighting: ${lightingSetup}. 
+      Atmosphere: ${atmosphereWords}. 
+      Details: ${detailModifiers}. 
+      Quality: ${technicalParameters}.
+      
+      The illustration should visually communicate the key concepts: ${cleanPrompt}
+      
+      IMPORTANT: DO NOT INCLUDE ANY TEXT, WORDS, LABELS, OR CHARACTERS IN THE IMAGE. The illustration should be entirely visual without any textual elements.`;
+
+      // Enhanced negative prompt to avoid unwanted elements
+      const negative_prompt =
+        'text, words, writing, watermark, signature, blurry, low quality, ugly, distorted, photorealistic, photograph, human faces, hands, cluttered, chaotic layout, overly complex, childish, cartoon-like, unprofessional, Chinese characters, Chinese text, Asian characters, characters, text overlay, letters, numbers, any text, Asian text';
+
+      console.log('Creating image generation task with DashScope API');
+
+      // Step 1: Create an image generation task
+      const createTaskResponse = await axios.post(
+        'https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis',
+        {
+          model: 'wanx2.1-t2i-turbo',
+          input: {
+            prompt: enhancedPrompt,
+            negative_prompt: negative_prompt,
+          },
+          parameters: {
+            size: size,
+            n: 1,
+          },
+        },
+        {
+          headers: {
+            'X-DashScope-Async': 'enable',
+            Authorization: `Bearer ${this.dashscopeApiKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      // Extract task_id from the response
+      if (
+        !createTaskResponse.data ||
+        !createTaskResponse.data.output ||
+        !createTaskResponse.data.output.task_id
+      ) {
+        throw new Error('No task ID returned from DashScope API');
+      }
+
+      const taskId = createTaskResponse.data.output.task_id;
+      console.log(`Task created successfully with ID: ${taskId}`);
+
+      // Step 2: Poll for the task result
+      const imageUrl = await this.getDashScopeImageResult(taskId);
 
       if (!imageUrl) {
-        throw new Error('No image URL returned from API');
+        throw new Error('Failed to get image URL from DashScope API');
       }
 
       // Download the image if a local path is specified
@@ -233,13 +362,84 @@ export class AIService implements IAIService {
         success: true,
       };
     } catch (error) {
-      console.error('Error generating image:', error);
+      console.error('Error generating image with DashScope:', error);
       return {
         url: '',
         prompt,
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
       };
+    }
+  }
+
+  /**
+   * Polls for the DashScope image generation task result
+   * @param taskId The task ID to check
+   * @param maxAttempts Maximum number of attempts
+   * @param checkInterval Interval between checks in milliseconds
+   * @returns The URL of the generated image, or null if generation failed
+   */
+  private async getDashScopeImageResult(
+    taskId: string,
+    maxAttempts = 15,
+    checkInterval = 5000
+  ): Promise<string | null> {
+    try {
+      console.log(`Checking status for DashScope task: ${taskId}`);
+      let attempts = 0;
+
+      while (attempts < maxAttempts) {
+        attempts++;
+        console.log(`Attempt ${attempts}/${maxAttempts}...`);
+
+        const response = await axios.get(
+          `https://dashscope.aliyuncs.com/api/v1/tasks/${taskId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${this.dashscopeApiKey}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+
+        if (!response.data || !response.data.output) {
+          console.error('Unexpected response format:', response.data);
+          return null;
+        }
+
+        const status = response.data.output.task_status;
+        console.log(`Current status: ${status}`);
+
+        if (status === 'SUCCEEDED') {
+          console.log('Task completed successfully!');
+          // Extract the image URL from the result
+          if (
+            response.data.output.results &&
+            response.data.output.results.length > 0
+          ) {
+            const imageUrl = response.data.output.results[0].url;
+            console.log(`Generated image URL: ${imageUrl}`);
+            return imageUrl;
+          } else {
+            console.error('No image URL in successful response');
+            return null;
+          }
+        } else if (status === 'FAILED') {
+          console.error('Task failed:', response.data.output.error);
+          return null;
+        }
+
+        console.log(
+          `Waiting ${checkInterval / 1000} seconds before next check...`
+        );
+        await this.delay(checkInterval);
+      }
+
+      console.error(`Max attempts (${maxAttempts}) reached without completion`);
+      return null;
+    } catch (error) {
+      console.error('Error checking task status:', error);
+      return null;
     }
   }
 
@@ -261,22 +461,32 @@ export class AIService implements IAIService {
     const prompt = `Validate if the following content complies with all the rules specified. Respond with ONLY "true" if all rules are satisfied, or "false" if any rule is violated.\n\nRULES:\n${rulesText}\n\nCONTENT:\n${truncatedContent}`;
 
     try {
-      const response = await this.openai.chat.completions.create({
-        model: this.modelName,
-        messages: [
-          {
-            role: 'system',
-            content:
-              'You are a content validator checking if text complies with specified rules. You respond with ONLY "true" or "false".',
+      // Use OpenAI API directly
+      const response = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+          model: this.modelName,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are a content validator checking if text complies with specified rules. You respond with ONLY "true" or "false".',
+            },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: 10,
+          temperature: 0.1, // Very low temperature for consistent responses
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${this.openaiApiKey}`,
+            'Content-Type': 'application/json',
           },
-          { role: 'user', content: prompt },
-        ],
-        max_tokens: 10,
-        temperature: 0.1, // Very low temperature for consistent responses
-      });
+        }
+      );
 
       const result =
-        response.choices[0]?.message?.content?.trim().toLowerCase() || '';
+        response.data.choices[0]?.message?.content?.trim().toLowerCase() || '';
       return result === 'true';
     } catch (error) {
       console.error('Error validating content:', error);
@@ -315,5 +525,13 @@ export class AIService implements IAIService {
       console.error('Error downloading image:', error);
       throw error;
     }
+  }
+
+  /**
+   * Utility method to delay execution
+   * @param ms Milliseconds to delay
+   */
+  private async delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
