@@ -5,17 +5,17 @@ import {
   ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import * as fs from 'fs-extra';
-import * as path from 'path';
+} from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import * as fs from "fs-extra";
+import * as path from "path";
 import {
   ImageMetadata,
   StorageConfig,
   StorageItem,
   StorageResult,
-} from '../../types';
-import { IStorageService } from './StorageService.interface';
+} from "../../types";
+import { IStorageService } from "./StorageService.interface";
 
 /**
  * Implementation of the StorageService using Cloudflare R2
@@ -34,11 +34,11 @@ export class StorageService implements IStorageService {
   constructor(config: StorageConfig) {
     this.config = config;
     this.bucketName = config.bucketName;
-    this.baseUrl = config.baseUrl || '';
+    this.baseUrl = config.baseUrl || "";
 
     // Create client options
     const clientOptions: any = {
-      region: config.region || 'auto',
+      region: config.region || "auto",
       credentials: {
         accessKeyId: config.accessKeyId,
         secretAccessKey: config.secretAccessKey,
@@ -46,7 +46,7 @@ export class StorageService implements IStorageService {
     };
 
     // Add endpoint for Cloudflare R2 if account ID is provided
-    if (config.accountId && config.provider.toLowerCase() === 'r2') {
+    if (config.accountId && config.provider.toLowerCase() === "r2") {
       clientOptions.endpoint = `https://${config.accountId}.r2.cloudflarestorage.com`;
     }
 
@@ -75,19 +75,19 @@ export class StorageService implements IStorageService {
       const fileExtension = path.extname(imagePath).toLowerCase();
 
       // Determine content type
-      let contentType = 'application/octet-stream';
-      if (fileExtension === '.jpg' || fileExtension === '.jpeg') {
-        contentType = 'image/jpeg';
-      } else if (fileExtension === '.png') {
-        contentType = 'image/png';
-      } else if (fileExtension === '.gif') {
-        contentType = 'image/gif';
-      } else if (fileExtension === '.webp') {
-        contentType = 'image/webp';
+      let contentType = "application/octet-stream";
+      if (fileExtension === ".jpg" || fileExtension === ".jpeg") {
+        contentType = "image/jpeg";
+      } else if (fileExtension === ".png") {
+        contentType = "image/png";
+      } else if (fileExtension === ".gif") {
+        contentType = "image/gif";
+      } else if (fileExtension === ".webp") {
+        contentType = "image/webp";
       }
 
       // Create a key for the image using a timestamp and original filename
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const fileName = path.basename(imagePath);
       const key = `images/${timestamp}-${fileName}`;
 
@@ -102,7 +102,7 @@ export class StorageService implements IStorageService {
 
         // Convert tags array to string if present
         if (metadata.tags && Array.isArray(metadata.tags)) {
-          s3Metadata.tags = metadata.tags.join(',');
+          s3Metadata.tags = metadata.tags.join(",");
         }
       }
 
@@ -128,12 +128,12 @@ export class StorageService implements IStorageService {
         success: true,
       };
     } catch (error) {
-      console.error('Error uploading image:', error);
+      console.error("Error uploading image:", error);
       return {
-        key: '',
-        url: '',
+        key: "",
+        url: "",
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -158,20 +158,20 @@ export class StorageService implements IStorageService {
       // For Cloudflare R2, use the public URL if configured
       if (this.baseUrl) {
         // Ensure baseUrl doesn't end with slash and key doesn't start with one
-        const normalizedBaseUrl = this.baseUrl.endsWith('/')
+        const normalizedBaseUrl = this.baseUrl.endsWith("/")
           ? this.baseUrl.slice(0, -1)
           : this.baseUrl;
 
-        const normalizedKey = key.startsWith('/') ? key.slice(1) : key;
+        const normalizedKey = key.startsWith("/") ? key.slice(1) : key;
 
         return `${normalizedBaseUrl}/${normalizedKey}`;
       }
 
       // Fallback to standard S3 URL format (should rarely be used with R2)
-      const region = this.config.region || 'auto';
+      const region = this.config.region || "auto";
       return `https://${this.bucketName}.r2.${region}.cloudflarestorage.com/${key}`;
     } catch (error) {
-      console.error('Error generating URL:', error);
+      console.error("Error generating URL:", error);
       throw error;
     }
   }
@@ -196,7 +196,7 @@ export class StorageService implements IStorageService {
       // Convert S3 objects to StorageItems
       const items = await Promise.all(
         response.Contents.map(async (item) => {
-          const key = item.Key || '';
+          const key = item.Key || "";
           const url = await this.getPublicUrl(key);
 
           return {
@@ -205,14 +205,14 @@ export class StorageService implements IStorageService {
             size: item.Size || 0,
             lastModified: item.LastModified || new Date(),
             contentType: this.getContentTypeFromKey(key),
-            eTag: item.ETag || '',
+            eTag: item.ETag || "",
           };
         })
       );
 
       return items;
     } catch (error) {
-      console.error('Error listing items:', error);
+      console.error("Error listing items:", error);
       return [];
     }
   }
@@ -231,7 +231,7 @@ export class StorageService implements IStorageService {
       await this.s3Client.send(command);
       return true;
     } catch (error) {
-      console.error('Error deleting item:', error);
+      console.error("Error deleting item:", error);
       return false;
     }
   }
@@ -264,12 +264,12 @@ export class StorageService implements IStorageService {
         success: true,
       };
     } catch (error) {
-      console.error('Error copying item:', error);
+      console.error("Error copying item:", error);
       return {
-        key: '',
-        url: '',
+        key: "",
+        url: "",
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -282,29 +282,29 @@ export class StorageService implements IStorageService {
     const extension = path.extname(key).toLowerCase();
 
     switch (extension) {
-    case '.jpg':
-    case '.jpeg':
-      return 'image/jpeg';
-    case '.png':
-      return 'image/png';
-    case '.gif':
-      return 'image/gif';
-    case '.webp':
-      return 'image/webp';
-    case '.pdf':
-      return 'application/pdf';
-    case '.json':
-      return 'application/json';
-    case '.txt':
-      return 'text/plain';
-    case '.html':
-      return 'text/html';
-    case '.css':
-      return 'text/css';
-    case '.js':
-      return 'application/javascript';
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
+    case ".gif":
+      return "image/gif";
+    case ".webp":
+      return "image/webp";
+    case ".pdf":
+      return "application/pdf";
+    case ".json":
+      return "application/json";
+    case ".txt":
+      return "text/plain";
+    case ".html":
+      return "text/html";
+    case ".css":
+      return "text/css";
+    case ".js":
+      return "application/javascript";
     default:
-      return 'application/octet-stream';
+      return "application/octet-stream";
     }
   }
 }

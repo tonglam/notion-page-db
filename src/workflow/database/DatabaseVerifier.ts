@@ -1,7 +1,7 @@
-import * as fs from 'fs-extra';
-import * as path from 'path';
-import { INotionDatabase } from '../../core/notion/NotionDatabase.interface';
-import { DatabaseSchema, NotionConfig, VerificationResult } from '../../types';
+import * as fs from "fs-extra";
+import * as path from "path";
+import { INotionDatabase } from "../../core/notion/NotionDatabase.interface";
+import { DatabaseSchema, NotionConfig, VerificationResult } from "../../types";
 
 /**
  * Database Verifier
@@ -21,18 +21,18 @@ export class DatabaseVerifier {
     this.notionDatabase = notionDatabase;
     this.notionConfig = notionConfig;
     this.requiredProperties = [
-      'Title',
-      'Category',
-      'Tags',
-      'Summary',
-      'Excerpt',
-      'Mins Read',
-      'Image',
-      'R2ImageUrl',
-      'Date Created',
-      'Status',
-      'Original Page',
-      'Published',
+      "Title",
+      "Category",
+      "Tags",
+      "Summary",
+      "Excerpt",
+      "Mins Read",
+      "Image",
+      "R2ImageUrl",
+      "Date Created",
+      "Status",
+      "Original Page",
+      "Published",
     ];
   }
 
@@ -49,67 +49,25 @@ export class DatabaseVerifier {
       if (!dbExists) {
         return {
           success: false,
-          errors: ['Database does not exist or is not accessible'],
+          errors: ["Database does not exist or is not accessible"],
         };
       }
 
       // Since we can't access the database schema directly from the API yet,
       // we'll need to skip the schema validation for now
-      console.warn('Database schema validation is limited - API access needed');
+      console.warn("Database schema validation is limited - API access needed");
 
       // Return success for now
       return {
         success: true,
         databaseId,
-        message: 'Database verified (with limited schema validation)',
+        message: "Database verified (with limited schema validation)",
       };
-
-      /* When we have proper API access, we would do something like:
-      const databaseSchema = await this.notionDatabase.getDatabaseSchema(databaseId);
-      
-      if (!databaseSchema || !databaseSchema.properties) {
-        return {
-          success: false,
-          errors: ['Failed to retrieve database schema'],
-        };
-      }
-      
-      // Verify required properties
-      const missingProperties: string[] = [];
-      
-      for (const requiredProp of this.requiredProperties) {
-        if (!databaseSchema.properties[requiredProp]) {
-          missingProperties.push(requiredProp);
-        }
-      }
-      
-      if (missingProperties.length > 0) {
-        return {
-          success: false,
-          errors: [`Missing required properties: ${missingProperties.join(", ")}`],
-          missingProperties,
-        };
-      }
-      
-      // Validate property types
-      const invalidPropertyTypes: string[] = [];
-      
-      // Check each property type
-      // ... property type validation logic ...
-      
-      if (invalidPropertyTypes.length > 0) {
-        return {
-          success: false,
-          errors: invalidPropertyTypes,
-          invalidPropertyTypes,
-        };
-      }
-      */
     } catch (error) {
-      console.error('Error verifying database:', error);
+      console.error("Error verifying database:", error);
       return {
         success: false,
-        errors: [error instanceof Error ? error.message : 'Unknown error'],
+        errors: [error instanceof Error ? error.message : "Unknown error"],
       };
     }
   }
@@ -130,7 +88,7 @@ export class DatabaseVerifier {
         if (!parentPageId) {
           return {
             success: false,
-            errors: ['Parent page ID is required to create a new database'],
+            errors: ["Parent page ID is required to create a new database"],
           };
         }
 
@@ -139,7 +97,7 @@ export class DatabaseVerifier {
 
         // Create the database - this needs proper data structure for NotionDatabase.createDatabase
         const dbData = {
-          title: 'Content Database', // This will be properly formatted in NotionDatabase
+          title: "Content Database", // This will be properly formatted in NotionDatabase
           properties: schema,
         };
 
@@ -162,17 +120,17 @@ export class DatabaseVerifier {
         return {
           success: true,
           databaseId,
-          message: 'Database verified successfully',
+          message: "Database verified successfully",
         };
       }
 
       // If the database exists but has issues, report them
       return verificationResult;
     } catch (error) {
-      console.error('Error creating/verifying database:', error);
+      console.error("Error creating/verifying database:", error);
       return {
         success: false,
-        errors: [error instanceof Error ? error.message : 'Unknown error'],
+        errors: [error instanceof Error ? error.message : "Unknown error"],
       };
     }
   }
@@ -183,7 +141,7 @@ export class DatabaseVerifier {
    */
   async loadSchemaConfig(configPath?: string): Promise<DatabaseSchema | null> {
     const schemaPath =
-      configPath || path.join(process.cwd(), 'config', 'database-schema.json');
+      configPath || path.join(process.cwd(), "config", "database-schema.json");
 
     try {
       if (await fs.pathExists(schemaPath)) {
@@ -192,7 +150,7 @@ export class DatabaseVerifier {
       }
       return null;
     } catch (error) {
-      console.error('Error loading schema config:', error);
+      console.error("Error loading schema config:", error);
       return null;
     }
   }
@@ -203,54 +161,54 @@ export class DatabaseVerifier {
   private buildDatabaseSchema(): Record<string, any> {
     return {
       Title: {
-        type: 'title',
+        type: "title",
       },
       Category: {
-        type: 'select',
+        type: "select",
         options: [
-          { name: 'JavaScript', color: 'yellow' },
-          { name: 'Python', color: 'blue' },
-          { name: 'React', color: 'green' },
-          { name: 'TypeScript', color: 'purple' },
+          { name: "JavaScript", color: "yellow" },
+          { name: "Python", color: "blue" },
+          { name: "React", color: "green" },
+          { name: "TypeScript", color: "purple" },
         ],
       },
       Tags: {
-        type: 'multi_select',
+        type: "multi_select",
         options: [],
       },
       Summary: {
-        type: 'rich_text',
+        type: "rich_text",
       },
       Excerpt: {
-        type: 'rich_text',
+        type: "rich_text",
       },
-      'Mins Read': {
-        type: 'number',
-        format: 'number',
+      "Mins Read": {
+        type: "number",
+        format: "number",
       },
       Image: {
-        type: 'url',
+        type: "url",
       },
       R2ImageUrl: {
-        type: 'url',
+        type: "url",
       },
-      'Date Created': {
-        type: 'date',
+      "Date Created": {
+        type: "date",
       },
       Status: {
-        type: 'select',
+        type: "select",
         options: [
-          { name: 'Draft', color: 'gray' },
-          { name: 'Ready', color: 'green' },
-          { name: 'Review', color: 'yellow' },
-          { name: 'Published', color: 'blue' },
+          { name: "Draft", color: "gray" },
+          { name: "Ready", color: "green" },
+          { name: "Review", color: "yellow" },
+          { name: "Published", color: "blue" },
         ],
       },
-      'Original Page': {
-        type: 'url',
+      "Original Page": {
+        type: "url",
       },
       Published: {
-        type: 'checkbox',
+        type: "checkbox",
       },
     };
   }

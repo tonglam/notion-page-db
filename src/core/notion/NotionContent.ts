@@ -1,13 +1,13 @@
-import { Client } from '@notionhq/client';
-import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints';
+import { Client } from "@notionhq/client";
+import { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import {
   Block,
   Category,
   ContentPage,
   NotionConfig,
   PageContent,
-} from '../../types';
-import { INotionContent } from './NotionContent.interface';
+} from "../../types";
+import { INotionContent } from "./NotionContent.interface";
 
 /**
  * Implementation of the NotionContent service
@@ -47,15 +47,15 @@ export class NotionContent implements INotionContent {
     })) as PageObjectResponse;
 
     // Get the page title
-    let title = 'Untitled';
-    if (page.properties && 'title' in page.properties) {
+    let title = "Untitled";
+    if (page.properties && "title" in page.properties) {
       const titleProperty = page.properties.title;
       if (
-        'title' in titleProperty &&
+        "title" in titleProperty &&
         Array.isArray(titleProperty.title) &&
         titleProperty.title.length > 0
       ) {
-        title = titleProperty.title.map((item) => item.plain_text).join('');
+        title = titleProperty.title.map((item) => item.plain_text).join("");
       }
     }
 
@@ -93,15 +93,15 @@ export class NotionContent implements INotionContent {
 
     // Find child pages/subpages as categories
     for (const block of blocks) {
-      if (block.type === 'child_page' && block.hasChildren) {
+      if (block.type === "child_page" && block.hasChildren) {
         // Determine if this is a regular category or MIT unit
         const isMITUnit =
-          block.content?.title?.toLowerCase().includes('mit') || false;
+          block.content?.title?.toLowerCase().includes("mit") || false;
 
         categories.push({
           id: block.id,
-          name: block.content?.title || 'Untitled',
-          type: isMITUnit ? 'mit' : 'regular',
+          name: block.content?.title || "Untitled",
+          type: isMITUnit ? "mit" : "regular",
         });
       }
     }
@@ -127,7 +127,7 @@ export class NotionContent implements INotionContent {
 
       // Find child pages in this category
       for (const block of blocks) {
-        if (block.type === 'child_page') {
+        if (block.type === "child_page") {
           // Get the content of this page
           const pageContent = await this.fetchPageContent(block.id);
           const textContent = this.convertBlocksToText(pageContent.blocks);
@@ -138,7 +138,7 @@ export class NotionContent implements INotionContent {
             title: pageContent.title,
             parentId: category.id,
             category:
-              category.type === 'mit' ? `CITS${category.name}` : category.name,
+              category.type === "mit" ? `CITS${category.name}` : category.name,
             content: textContent,
             createdTime: pageContent.createdTime,
             lastEditedTime: pageContent.lastEditedTime,
@@ -156,10 +156,10 @@ export class NotionContent implements INotionContent {
    * @param maxLength Maximum length of the excerpt
    */
   generateExcerpt(content: string, maxLength = 200): string {
-    if (!content) return '';
+    if (!content) return "";
 
     // Remove extra whitespace
-    const cleanContent = content.replace(/\s+/g, ' ').trim();
+    const cleanContent = content.replace(/\s+/g, " ").trim();
 
     // Check if content is already shorter than max length
     if (cleanContent.length <= maxLength) {
@@ -167,21 +167,21 @@ export class NotionContent implements INotionContent {
     }
 
     // Try to find a sentence break near the max length
-    const sentenceBreak = cleanContent.slice(0, maxLength).lastIndexOf('.');
+    const sentenceBreak = cleanContent.slice(0, maxLength).lastIndexOf(".");
 
     if (sentenceBreak !== -1 && sentenceBreak > maxLength / 2) {
       return cleanContent.slice(0, sentenceBreak + 1);
     }
 
     // Fall back to word boundary
-    const wordBreak = cleanContent.slice(0, maxLength).lastIndexOf(' ');
+    const wordBreak = cleanContent.slice(0, maxLength).lastIndexOf(" ");
 
     if (wordBreak !== -1) {
-      return cleanContent.slice(0, wordBreak) + '...';
+      return cleanContent.slice(0, wordBreak) + "...";
     }
 
     // Last resort: just cut at maxLength
-    return cleanContent.slice(0, maxLength) + '...';
+    return cleanContent.slice(0, maxLength) + "...";
   }
 
   /**
@@ -327,37 +327,37 @@ export class NotionContent implements INotionContent {
     let content: any = {};
 
     // Handle different block types
-    if (blockType === 'paragraph') {
+    if (blockType === "paragraph") {
       content = this.extractTextContent(block.paragraph?.rich_text);
-    } else if (blockType === 'heading_1') {
+    } else if (blockType === "heading_1") {
       content = this.extractTextContent(block.heading_1?.rich_text);
-    } else if (blockType === 'heading_2') {
+    } else if (blockType === "heading_2") {
       content = this.extractTextContent(block.heading_2?.rich_text);
-    } else if (blockType === 'heading_3') {
+    } else if (blockType === "heading_3") {
       content = this.extractTextContent(block.heading_3?.rich_text);
-    } else if (blockType === 'bulleted_list_item') {
+    } else if (blockType === "bulleted_list_item") {
       content = this.extractTextContent(block.bulleted_list_item?.rich_text);
-    } else if (blockType === 'numbered_list_item') {
+    } else if (blockType === "numbered_list_item") {
       content = this.extractTextContent(block.numbered_list_item?.rich_text);
-    } else if (blockType === 'to_do') {
+    } else if (blockType === "to_do") {
       content = {
         text: this.extractTextContent(block.to_do?.rich_text),
         checked: block.to_do?.checked || false,
       };
-    } else if (blockType === 'code') {
+    } else if (blockType === "code") {
       content = {
         text: this.extractTextContent(block.code?.rich_text),
-        language: block.code?.language || 'plain text',
+        language: block.code?.language || "plain text",
       };
-    } else if (blockType === 'image') {
+    } else if (blockType === "image") {
       content = {
         type: block.image?.type,
         url: block.image?.file?.url || block.image?.external?.url,
         caption: this.extractTextContent(block.image?.caption),
       };
-    } else if (blockType === 'child_page') {
+    } else if (blockType === "child_page") {
       content = {
-        title: block.child_page?.title || 'Untitled',
+        title: block.child_page?.title || "Untitled",
       };
     } else {
       // Generic handling for other block types
@@ -378,10 +378,10 @@ export class NotionContent implements INotionContent {
    */
   private extractTextContent(richText: any[]): string {
     if (!richText || !Array.isArray(richText)) {
-      return '';
+      return "";
     }
 
-    return richText.map((item) => item.plain_text).join('');
+    return richText.map((item) => item.plain_text).join("");
   }
 
   /**
@@ -389,28 +389,28 @@ export class NotionContent implements INotionContent {
    * @param blocks Blocks to convert
    */
   private convertBlocksToText(blocks: Block[]): string {
-    let text = '';
+    let text = "";
 
     for (const block of blocks) {
-      if (block.type === 'paragraph') {
-        text += block.content + '\n\n';
-      } else if (block.type === 'heading_1') {
-        text += block.content + '\n\n';
-      } else if (block.type === 'heading_2') {
-        text += block.content + '\n\n';
-      } else if (block.type === 'heading_3') {
-        text += block.content + '\n\n';
-      } else if (block.type === 'bulleted_list_item') {
-        text += '• ' + block.content + '\n';
-      } else if (block.type === 'numbered_list_item') {
-        text += '1. ' + block.content + '\n';
-      } else if (block.type === 'to_do') {
-        const checkbox = block.content.checked ? '[x]' : '[ ]';
-        text += checkbox + ' ' + block.content.text + '\n';
-      } else if (block.type === 'code') {
-        text += '```' + block.content.language + '\n';
-        text += block.content.text + '\n';
-        text += '```\n\n';
+      if (block.type === "paragraph") {
+        text += block.content + "\n\n";
+      } else if (block.type === "heading_1") {
+        text += block.content + "\n\n";
+      } else if (block.type === "heading_2") {
+        text += block.content + "\n\n";
+      } else if (block.type === "heading_3") {
+        text += block.content + "\n\n";
+      } else if (block.type === "bulleted_list_item") {
+        text += "• " + block.content + "\n";
+      } else if (block.type === "numbered_list_item") {
+        text += "1. " + block.content + "\n";
+      } else if (block.type === "to_do") {
+        const checkbox = block.content.checked ? "[x]" : "[ ]";
+        text += checkbox + " " + block.content.text + "\n";
+      } else if (block.type === "code") {
+        text += "```" + block.content.language + "\n";
+        text += block.content.text + "\n";
+        text += "```\n\n";
       }
 
       // Recursively process children

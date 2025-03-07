@@ -3,7 +3,7 @@ import {
   NotionConfig,
   StorageConfig,
   ValidationResult,
-} from '../../types';
+} from "../../types";
 
 /**
  * Interface for the ConfigManager component

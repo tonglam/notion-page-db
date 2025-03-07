@@ -1,13 +1,13 @@
-import { Client } from '@notionhq/client';
-import { PageObjectResponse } from '@notionhq/client/build/src/api-endpoints';
+import { Client } from "@notionhq/client";
+import { PageObjectResponse } from "@notionhq/client/build/src/api-endpoints";
 import {
   DatabaseSchema,
   EntryData,
   NotionConfig,
   NotionEntry,
   QueryFilter,
-} from '../../types';
-import { INotionDatabase } from './NotionDatabase.interface';
+} from "../../types";
+import { INotionDatabase } from "./NotionDatabase.interface";
 
 /**
  * Implementation of the NotionDatabase service
@@ -54,7 +54,7 @@ export class NotionDatabase implements INotionDatabase {
 
     // Process each property in the schema
     Object.entries(schema.properties).forEach(([name, definition]) => {
-      if (name === 'Title') {
+      if (name === "Title") {
         properties[name] = { title: {} };
       } else {
         properties[name] = this.createPropertyDefinition(definition);
@@ -65,12 +65,12 @@ export class NotionDatabase implements INotionDatabase {
       // Create the database
       const response = await this.client.databases.create({
         parent: {
-          type: 'page_id',
+          type: "page_id",
           page_id: schema.name, // This would be a parent page ID
         },
         title: [
           {
-            type: 'text',
+            type: "text",
             text: {
               content: schema.name,
             },
@@ -82,7 +82,7 @@ export class NotionDatabase implements INotionDatabase {
       this.databaseId = response.id;
       return response.id;
     } catch (error) {
-      console.error('Failed to create database:', error);
+      console.error("Failed to create database:", error);
       throw new Error(`Failed to create database: ${(error as Error).message}`);
     }
   }
@@ -95,7 +95,7 @@ export class NotionDatabase implements INotionDatabase {
     try {
       // Validate database ID
       if (!this.databaseId) {
-        throw new Error('Database ID is required');
+        throw new Error("Database ID is required");
       }
 
       // Create filter for the query - leave it undefined for now to avoid type issues
@@ -142,7 +142,7 @@ export class NotionDatabase implements INotionDatabase {
 
       return entries;
     } catch (error) {
-      console.error('Error querying entries:', error);
+      console.error("Error querying entries:", error);
       throw error;
     }
   }
@@ -153,7 +153,7 @@ export class NotionDatabase implements INotionDatabase {
    */
   async createEntry(data: EntryData): Promise<string> {
     if (!this.databaseId) {
-      throw new Error('Database ID is not set');
+      throw new Error("Database ID is not set");
     }
 
     await this.delay(); // Respect rate limiting
@@ -170,7 +170,7 @@ export class NotionDatabase implements INotionDatabase {
 
       return response.id;
     } catch (error) {
-      console.error('Failed to create entry:', error);
+      console.error("Failed to create entry:", error);
       throw new Error(`Failed to create entry: ${(error as Error).message}`);
     }
   }
@@ -259,7 +259,7 @@ export class NotionDatabase implements INotionDatabase {
   private createPropertyDefinition(definition: any): any {
     const { type, options } = definition;
 
-    if (type === 'select' || type === 'multi_select') {
+    if (type === "select" || type === "multi_select") {
       return {
         [type]: options ? { options } : {},
       };

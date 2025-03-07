@@ -1,4 +1,4 @@
-import { Category, ContentPage, PageContent } from '../../types';
+import { Category, ContentPage, PageContent } from "../../types";
 
 /**
  * Interface for the NotionContent component

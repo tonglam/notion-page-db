@@ -52,15 +52,15 @@ export interface DatabaseSchema {
 
 export interface PropertyDefinition {
   type:
-    | 'title'
-    | 'rich_text'
-    | 'select'
-    | 'multi_select'
-    | 'number'
-    | 'url'
-    | 'date'
-    | 'files'
-    | 'checkbox';
+    | "title"
+    | "rich_text"
+    | "select"
+    | "multi_select"
+    | "number"
+    | "url"
+    | "date"
+    | "files"
+    | "checkbox";
   options?: Array<{ name: string; color?: string }>; // For select/multi_select
   description?: string;
 }
@@ -110,7 +110,7 @@ export interface Block {
 export interface Category {
   id: string;
   name: string;
-  type: 'regular' | 'mit'; // Regular category or MIT unit with CITS prefix
+  type: "regular" | "mit"; // Regular category or MIT unit with CITS prefix
 }
 
 /**
@@ -134,7 +134,7 @@ export interface ContentPage {
 // AI Service Types
 export interface SummaryOptions {
   maxLength?: number;
-  style?: 'concise' | 'detailed' | 'technical';
+  style?: "concise" | "detailed" | "technical";
   includeKeyPoints?: boolean;
 }
 
@@ -275,10 +275,10 @@ export interface BatchImageResult {
 }
 
 export enum GenerationStatus {
-  NotStarted = 'not_started',
-  Pending = 'pending',
-  Completed = 'completed',
-  Failed = 'failed',
+  NotStarted = "not_started",
+  Pending = "pending",
+  Completed = "completed",
+  Failed = "failed",
 }
 
 export interface UploadResult {
@@ -299,11 +299,11 @@ export interface BatchUploadResult {
 }
 
 export enum ProcessingStage {
-  Metadata = 'metadata',
-  Content = 'content',
-  ImageGeneration = 'image_generation',
-  ImageUpload = 'image_upload',
-  Complete = 'complete',
+  Metadata = "metadata",
+  Content = "content",
+  ImageGeneration = "image_generation",
+  ImageUpload = "image_upload",
+  Complete = "complete",
 }
 
 export interface ProcessingResult {

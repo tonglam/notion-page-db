@@ -1,5 +1,5 @@
-import { INotionDatabase } from '../../core/notion/NotionDatabase.interface';
-import { ContentPage, NotionEntry, UpdateResult } from '../../types';
+import { INotionDatabase } from "../../core/notion/NotionDatabase.interface";
+import { ContentPage, NotionEntry, UpdateResult } from "../../types";
 
 /**
  * Database Updater
@@ -40,7 +40,7 @@ export class DatabaseUpdater {
       if (queryResult && queryResult.length > 0) {
         queryResult.forEach((entry) => {
           // Use the Original Page URL as the key if available
-          const originalPageUrl = entry.properties['Original Page']?.url;
+          const originalPageUrl = entry.properties["Original Page"]?.url;
           const pageId = entry.id;
 
           if (originalPageUrl) {
@@ -54,7 +54,7 @@ export class DatabaseUpdater {
 
       console.log(`Loaded ${this.existingEntries.size} existing entries`);
     } catch (error) {
-      console.error('Error initializing database updater:', error);
+      console.error("Error initializing database updater:", error);
       throw error;
     }
   }
@@ -68,7 +68,7 @@ export class DatabaseUpdater {
       console.log(`Updating entry for page: ${contentPage.title}`);
 
       // Check if an entry already exists for this page
-      const originalPageUrl = `https://www.notion.so/${contentPage.id.replace(/-/g, '')}`;
+      const originalPageUrl = `https://www.notion.so/${contentPage.id.replace(/-/g, "")}`;
       const existingEntry = this.existingEntries.get(originalPageUrl);
 
       // Prepare the properties to update
@@ -76,7 +76,7 @@ export class DatabaseUpdater {
         Title: {
           title: [
             {
-              type: 'text',
+              type: "text",
               text: {
                 content: contentPage.title,
               },
@@ -91,9 +91,9 @@ export class DatabaseUpdater {
         Summary: {
           rich_text: [
             {
-              type: 'text',
+              type: "text",
               text: {
-                content: contentPage.summary || '',
+                content: contentPage.summary || "",
               },
             },
           ],
@@ -101,20 +101,20 @@ export class DatabaseUpdater {
         Excerpt: {
           rich_text: [
             {
-              type: 'text',
+              type: "text",
               text: {
-                content: contentPage.excerpt || '',
+                content: contentPage.excerpt || "",
               },
             },
           ],
         },
-        'Mins Read': {
+        "Mins Read": {
           number: contentPage.minsRead || 0,
         },
-        'Original Page': {
+        "Original Page": {
           url: originalPageUrl,
         },
-        'Date Created': {
+        "Date Created": {
           date: {
             start: contentPage.createdTime,
           },
@@ -154,12 +154,12 @@ export class DatabaseUpdater {
       }
 
       // Otherwise, create a new entry
-      console.log('Creating new entry');
+      console.log("Creating new entry");
 
       // Set default status for new entries
       properties.Status = {
         select: {
-          name: 'Draft',
+          name: "Draft",
         },
       };
 
@@ -192,10 +192,10 @@ export class DatabaseUpdater {
         message: `Created new entry: ${entryId}`,
       };
     } catch (error) {
-      console.error('Error updating entry:', error);
+      console.error("Error updating entry:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }

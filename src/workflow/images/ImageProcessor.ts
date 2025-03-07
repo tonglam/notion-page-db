@@ -1,10 +1,10 @@
-import axios from 'axios';
-import * as fs from 'fs-extra';
-import * as os from 'os';
-import * as path from 'path';
-import { IAIService } from '../../core/ai/AIService.interface';
-import { IStorageService } from '../../core/storage/StorageService.interface';
-import { ContentPage, ImageMetadata, ImageProcessingResult } from '../../types';
+import axios from "axios";
+import * as fs from "fs-extra";
+import * as os from "os";
+import * as path from "path";
+import { IAIService } from "../../core/ai/AIService.interface";
+import { IStorageService } from "../../core/storage/StorageService.interface";
+import { ContentPage, ImageMetadata, ImageProcessingResult } from "../../types";
 
 /**
  * Image Processor
@@ -23,7 +23,7 @@ export class ImageProcessor {
   constructor(aiService: IAIService, storageService: IStorageService) {
     this.aiService = aiService;
     this.storageService = storageService;
-    this.tempDir = path.join(os.tmpdir(), 'notion-page-db-images');
+    this.tempDir = path.join(os.tmpdir(), "notion-page-db-images");
   }
 
   /**
@@ -55,7 +55,7 @@ export class ImageProcessor {
 
         // Check if it's already a storage URL
         if (this.isStorageUrl(contentPage.imageUrl)) {
-          console.log('Image is already in storage');
+          console.log("Image is already in storage");
           return {
             success: true,
             imageUrl: contentPage.imageUrl,
@@ -73,20 +73,20 @@ export class ImageProcessor {
 
       // Generate a new image if requested
       if (generateIfMissing) {
-        console.log('Generating new image for content');
+        console.log("Generating new image for content");
         return await this.generateAndStoreImage(contentPage);
       }
 
       // No image and not generating
       return {
         success: false,
-        error: 'No image URL and generation not requested',
+        error: "No image URL and generation not requested",
       };
     } catch (error) {
-      console.error('Error processing images:', error);
+      console.error("Error processing images:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -130,14 +130,14 @@ export class ImageProcessor {
       // Create a temporary file path
       const tempFilePath = path.join(
         this.tempDir,
-        `${Date.now()}-${path.basename(imageUrl) || 'image.jpg'}`
+        `${Date.now()}-${path.basename(imageUrl) || "image.jpg"}`
       );
 
       // Download the image
       const response = await axios({
         url: imageUrl,
-        method: 'GET',
-        responseType: 'stream',
+        method: "GET",
+        responseType: "stream",
       });
 
       // Save the image to the temp file
@@ -146,8 +146,8 @@ export class ImageProcessor {
 
       // Wait for the download to complete
       await new Promise<void>((resolve, reject) => {
-        writer.on('finish', resolve);
-        writer.on('error', reject);
+        writer.on("finish", resolve);
+        writer.on("error", reject);
       });
 
       console.log(`Image downloaded to: ${tempFilePath}`);
@@ -155,7 +155,7 @@ export class ImageProcessor {
       // Create metadata for the image
       const metadata: ImageMetadata = {
         title: contentPage.title,
-        description: contentPage.summary || '',
+        description: contentPage.summary || "",
         alt: `Image for ${contentPage.title}`,
         sourceUrl: imageUrl,
         tags: contentPage.tags || [],
@@ -173,7 +173,7 @@ export class ImageProcessor {
       if (!storageResult.success) {
         return {
           success: false,
-          error: storageResult.error || 'Failed to upload image to storage',
+          error: storageResult.error || "Failed to upload image to storage",
         };
       }
 
@@ -186,10 +186,10 @@ export class ImageProcessor {
         isNew: true,
       };
     } catch (error) {
-      console.error('Error downloading and storing image:', error);
+      console.error("Error downloading and storing image:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -215,16 +215,16 @@ export class ImageProcessor {
 
       // Generate the image
       const imageResult = await this.aiService.generateImage(imagePrompt, {
-        size: '1024x1024',
-        style: 'vivid',
-        quality: 'standard',
+        size: "1024x1024",
+        style: "vivid",
+        quality: "standard",
         localPath: tempFilePath,
       });
 
       if (!imageResult.success || !imageResult.url) {
         return {
           success: false,
-          error: imageResult.error || 'Failed to generate image',
+          error: imageResult.error || "Failed to generate image",
         };
       }
 
@@ -235,7 +235,7 @@ export class ImageProcessor {
         // Create metadata for the image
         const metadata: ImageMetadata = {
           title: contentPage.title,
-          description: contentPage.summary || '',
+          description: contentPage.summary || "",
           alt: `Image for ${contentPage.title}`,
           sourceUrl: imageResult.url,
           tags: contentPage.tags || [],
@@ -253,7 +253,7 @@ export class ImageProcessor {
         if (!storageResult.success) {
           return {
             success: false,
-            error: storageResult.error || 'Failed to upload image to storage',
+            error: storageResult.error || "Failed to upload image to storage",
           };
         }
 
@@ -271,10 +271,10 @@ export class ImageProcessor {
       // If the image wasn't saved locally, download and store it
       return await this.downloadAndStoreImage(imageResult.url, contentPage);
     } catch (error) {
-      console.error('Error generating and storing image:', error);
+      console.error("Error generating and storing image:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -285,7 +285,7 @@ export class ImageProcessor {
    */
   private isStorageUrl(url: string): boolean {
     // This is a simple check that can be customized based on the storage service
-    return url.includes('amazonaws.com') || url.includes('cloudflare.com');
+    return url.includes("amazonaws.com") || url.includes("cloudflare.com");
   }
 
   /**
@@ -294,9 +294,9 @@ export class ImageProcessor {
   async cleanup(): Promise<void> {
     try {
       await fs.emptyDir(this.tempDir);
-      console.log('Cleaned up temporary image files');
+      console.log("Cleaned up temporary image files");
     } catch (error) {
-      console.error('Error cleaning up temporary files:', error);
+      console.error("Error cleaning up temporary files:", error);
     }
   }
 }

@@ -1,4 +1,4 @@
-import { ImageOptions, ImageResult, SummaryOptions } from '../../types';
+import { ImageOptions, ImageResult, SummaryOptions } from "../../types";
 
 /**
  * Interface for AI services

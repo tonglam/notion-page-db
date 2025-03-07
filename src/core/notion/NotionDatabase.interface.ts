@@ -3,7 +3,7 @@ import {
   EntryData,
   NotionEntry,
   QueryFilter,
-} from '../../types';
+} from "../../types";
 
 /**
  * Interface for the NotionDatabase component

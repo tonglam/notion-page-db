@@ -1,4 +1,4 @@
-import { ImageMetadata, StorageItem, StorageResult } from '../../types';
+import { ImageMetadata, StorageItem, StorageResult } from "../../types";
 
 /**
  * Interface for storage services

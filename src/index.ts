@@ -1,7 +1,7 @@
-import * as dotenv from 'dotenv';
-import * as path from 'path';
-import { MigrationOptions } from './types';
-import { MigrationManager } from './workflow/MigrationManager';
+import * as dotenv from "dotenv";
+import * as path from "path";
+import { MigrationOptions } from "./types";
+import { MigrationManager } from "./workflow/MigrationManager";
 
 // Load environment variables
 dotenv.config();
@@ -16,7 +16,7 @@ export async function migrate(
   options: MigrationOptions = {}
 ): Promise<void> {
   try {
-    console.log('Starting NotionPageDb Migration...');
+    console.log("Starting NotionPageDb Migration...");
 
     // Create the migration manager
     const manager = new MigrationManager(configPath);
@@ -25,19 +25,19 @@ export async function migrate(
     const result = await manager.migrate(options);
 
     if (result.success) {
-      console.log('Migration completed successfully!');
+      console.log("Migration completed successfully!");
       console.log(`Total pages: ${result.totalPages}`);
       console.log(`Updated pages: ${result.updatedPages}`);
       console.log(`Failed pages: ${result.failedPages}`);
       console.log(
-        `Categories: ${result.categories?.map((c) => c.name).join(', ')}`
+        `Categories: ${result.categories?.map((c) => c.name).join(", ")}`
       );
     } else {
-      console.error('Migration failed:', result.error);
+      console.error("Migration failed:", result.error);
       process.exit(1);
     }
   } catch (error) {
-    console.error('Migration failed with an error:', error);
+    console.error("Migration failed with an error:", error);
     process.exit(1);
   }
 }
@@ -59,15 +59,15 @@ if (require.main === module) {
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
 
-    if (arg === '--config' && i + 1 < args.length) {
+    if (arg === "--config" && i + 1 < args.length) {
       configPath = path.resolve(args[++i]);
-    } else if (arg === '--no-enhance') {
+    } else if (arg === "--no-enhance") {
       options.enhanceContent = false;
-    } else if (arg === '--no-images') {
+    } else if (arg === "--no-images") {
       options.processImages = false;
-    } else if (arg === '--no-generate-images') {
+    } else if (arg === "--no-generate-images") {
       options.generateImages = false;
-    } else if (arg === '--help') {
+    } else if (arg === "--help") {
       console.log(`
 NotionPageDb Migration System
 
@@ -87,24 +87,24 @@ Options:
 
   // Run the migration
   migrate(configPath, options).catch((error) => {
-    console.error('Unhandled error:', error);
+    console.error("Unhandled error:", error);
     process.exit(1);
   });
 }
 
 // Export core components for programmatic use
-export * from './core/ai/AIService';
-export * from './core/config/ConfigManager';
-export * from './core/notion/NotionContent';
-export * from './core/notion/NotionDatabase';
-export * from './core/storage/StorageService';
+export * from "./core/ai/AIService";
+export * from "./core/config/ConfigManager";
+export * from "./core/notion/NotionContent";
+export * from "./core/notion/NotionDatabase";
+export * from "./core/storage/StorageService";
 
 // Export workflow components for programmatic use
-export * from './workflow/content/ContentProcessor';
-export * from './workflow/database/DatabaseUpdater';
-export * from './workflow/database/DatabaseVerifier';
-export * from './workflow/images/ImageProcessor';
-export * from './workflow/MigrationManager';
+export * from "./workflow/content/ContentProcessor";
+export * from "./workflow/database/DatabaseUpdater";
+export * from "./workflow/database/DatabaseVerifier";
+export * from "./workflow/images/ImageProcessor";
+export * from "./workflow/MigrationManager";
 
 // Export types
-export * from './types';
+export * from "./types";

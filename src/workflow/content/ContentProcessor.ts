@@ -1,6 +1,6 @@
-import { IAIService } from '../../core/ai/AIService.interface';
-import { INotionContent } from '../../core/notion/NotionContent.interface';
-import { ContentPage, FetchResult } from '../../types';
+import { IAIService } from "../../core/ai/AIService.interface";
+import { INotionContent } from "../../core/notion/NotionContent.interface";
+import { ContentPage, FetchResult } from "../../types";
 
 /**
  * Content Processor
@@ -45,7 +45,7 @@ export class ContentProcessor {
       if (categories.length === 0) {
         return {
           success: false,
-          error: 'No categories found in the source page',
+          error: "No categories found in the source page",
         };
       }
 
@@ -59,7 +59,7 @@ export class ContentProcessor {
       if (contentPages.length === 0) {
         return {
           success: false,
-          error: 'No valid content pages found',
+          error: "No valid content pages found",
           categories,
         };
       }
@@ -77,10 +77,10 @@ export class ContentProcessor {
         contentPages,
       };
     } catch (error) {
-      console.error('Error fetching content:', error);
+      console.error("Error fetching content:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : "Unknown error",
       };
     }
   }
@@ -107,7 +107,7 @@ export class ContentProcessor {
 
       // Generate a better title if the current one is generic
       if (
-        existingPage.title.toLowerCase().includes('untitled') ||
+        existingPage.title.toLowerCase().includes("untitled") ||
         existingPage.title.length < 10
       ) {
         const enhancedTitle = await this.aiService.generateTitle(
@@ -124,7 +124,7 @@ export class ContentProcessor {
           existingPage.content,
           {
             maxLength: 250,
-            style: 'detailed',
+            style: "detailed",
           }
         );
         console.log(`Generated summary (${summary.length} chars)`);
@@ -163,23 +163,23 @@ export class ContentProcessor {
 
       // Generate image if needed and requested
       if (enhanceImages && !existingPage.imageUrl) {
-        console.log('Generating image for content...');
+        console.log("Generating image for content...");
 
         // Create an image prompt based on the content
         const imagePrompt = `Create a professional, striking image for an article titled "${existingPage.title}" about ${existingPage.category}. The article discusses: ${existingPage.summary?.substring(0, 200)}`;
 
         // Generate the image
         const imageResult = await this.aiService.generateImage(imagePrompt, {
-          size: '1024x1024',
-          style: 'vivid',
-          quality: 'standard',
+          size: "1024x1024",
+          style: "vivid",
+          quality: "standard",
         });
 
         if (imageResult.success && imageResult.url) {
           console.log(`Generated image: ${imageResult.url}`);
           existingPage.imageUrl = imageResult.url;
         } else {
-          console.error('Failed to generate image:', imageResult.error);
+          console.error("Failed to generate image:", imageResult.error);
         }
       }
 
@@ -188,7 +188,7 @@ export class ContentProcessor {
 
       return existingPage;
     } catch (error) {
-      console.error('Error enhancing content:', error);
+      console.error("Error enhancing content:", error);
       return null;
     }
   }
