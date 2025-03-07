@@ -152,21 +152,18 @@ export class MigrationManager {
         `Updated ${successfulUpdates.length} entries, ${failedUpdates.length} failed`
       );
 
-      // Clean up
-      await this.imageProcessor.cleanup();
-
       return {
         success: true,
         totalPages: enhancedPages.length,
         updatedPages: successfulUpdates.length,
         failedPages: failedUpdates.length,
-        categories: fetchResult.categories || [],
+        categories: fetchResult.categories,
       };
     } catch (error) {
       console.error("Migration failed:", error);
       return {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }

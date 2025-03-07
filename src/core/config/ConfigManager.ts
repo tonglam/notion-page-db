@@ -27,8 +27,8 @@ export class ConfigManager implements IConfigManager {
     this.config = {
       notion: {
         apiKey: process.env.NOTION_API_KEY,
-        sourcePageId: process.env.SOURCE_PAGE_ID,
-        databaseId: process.env.NOTION_DATABASE_ID,
+        sourcePageId: process.env.NOTION_SOURCE_PAGE_ID,
+        targetDatabaseId: process.env.NOTION_TARGET_DATABASE_ID,
         rateLimitDelay: parseInt(
           process.env.NOTION_RATE_LIMIT_DELAY || "350",
           10
@@ -121,8 +121,8 @@ export class ConfigManager implements IConfigManager {
         sourcePageId:
           process.env.SOURCE_PAGE_ID || process.env.NOTION_SOURCE_PAGE_ID || "",
         targetDatabaseId:
-          process.env.NOTION_DATABASE_ID ||
           process.env.NOTION_TARGET_DATABASE_ID ||
+          process.env.NOTION_DATABASE_ID ||
           "",
         rateLimitDelay: process.env.NOTION_RATE_LIMIT_DELAY
           ? parseInt(process.env.NOTION_RATE_LIMIT_DELAY)
