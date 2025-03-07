@@ -1,0 +1,24 @@
+{
+  "notion": {
+    "apiKey": "your-notion-api-key",
+    "sourcePageId": "1ab7ef86-a5ad-81ab-a4cb-f8b8f37ec491",
+    "targetDatabaseId": "your-target-database-id",
+    "rateLimitDelay": 350
+  },
+  "ai": {
+    "provider": "openai",
+    "apiKey": "your-openai-api-key",
+    "model": "gpt-3.5-turbo",
+    "imageModel": "dall-e-3",
+    "maxTokens": 1000,
+    "temperature": 0.7
+  },
+  "storage": {
+    "provider": "s3",
+    "accessKeyId": "your-aws-access-key-id",
+    "secretAccessKey": "your-aws-secret-access-key",
+    "bucketName": "your-bucket-name",
+    "region": "us-east-1",
+    "usePresignedUrls": false
+  }
+}
