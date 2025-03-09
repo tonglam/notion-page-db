@@ -482,8 +482,8 @@ export class ConfigManager implements IConfigManager {
     this.config = {
       notion: {
         apiKey: process.env.NOTION_API_KEY,
-        sourcePageId: process.env.SOURCE_PAGE_ID,
-        databaseId: process.env.NOTION_DATABASE_ID,
+        sourcePageId: process.env.NOTION_SOURCE_PAGE_ID,
+        databaseName: process.env.NOTION_TARGET_DATABASE_NAME,
         rateLimitDelay: parseInt(
           process.env.NOTION_RATE_LIMIT_DELAY || "350",
           10
@@ -491,18 +491,38 @@ export class ConfigManager implements IConfigManager {
       },
       ai: {
         provider: process.env.AI_PROVIDER || "deepseek",
-        apiKey: process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY,
-        modelId: process.env.AI_MODEL_ID || "deepseek-r1-chat",
-        imageModel: process.env.IMAGE_MODEL || "dall-e-3",
-        maxRetries: parseInt(process.env.AI_MAX_RETRIES || "3", 10),
+        deepseek: {
+          apiKey: process.env.DEEPSEEK_API_KEY,
+        },
+        gemini: {
+          apiKey: process.env.GEMINI_API_KEY,
+        },
+        dashscope: {
+          apiKey: process.env.DASHSCOPE_API_KEY,
+        },
+        openai: {
+          apiKey: process.env.AI_API_KEY,
+        },
+        model: process.env.AI_MODEL,
+        imageModel: process.env.AI_IMAGE_MODEL || "dall-e-3",
+        maxTokens: parseInt(process.env.AI_MAX_TOKENS || "1000", 10),
+        temperature: parseFloat(process.env.AI_TEMPERATURE || "0.7"),
       },
       storage: {
-        provider: process.env.STORAGE_PROVIDER || "r2",
-        accountId: process.env.R2_ACCOUNT_ID,
-        accessKeyId: process.env.R2_ACCESS_KEY_ID,
-        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-        bucketName: process.env.R2_BUCKET_NAME,
-        publicUrlPrefix: process.env.R2_PUBLIC_URL,
+        accountId: process.env.STORAGE_ACCOUNT_ID || process.env.R2_ACCOUNT_ID,
+        accessKeyId:
+          process.env.STORAGE_ACCESS_KEY_ID || process.env.R2_ACCESS_KEY_ID,
+        secretAccessKey:
+          process.env.STORAGE_SECRET_ACCESS_KEY ||
+          process.env.R2_SECRET_ACCESS_KEY,
+        bucketName:
+          process.env.STORAGE_BUCKET_NAME || process.env.R2_BUCKET_NAME,
+        publicUrlPrefix:
+          process.env.STORAGE_PUBLIC_URL || process.env.R2_PUBLIC_URL,
+        region: process.env.STORAGE_REGION || process.env.R2_REGION || "auto",
+        usePresignedUrls:
+          process.env.STORAGE_USE_PRESIGNED_URLS === "true" ||
+          process.env.R2_USE_PRESIGNED_URLS === "true",
       },
     };
   }

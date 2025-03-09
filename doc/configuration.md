@@ -6,28 +6,40 @@ This document provides a comprehensive guide for configuring the NotionPageDb Mi
 
 The system uses environment variables for most configuration. These can be set in a `.env` file in the project root or through your system's environment.
 
+## Security Warning
+
+⚠️ **IMPORTANT**: API keys and credentials are sensitive information that should be kept secure:
+
+1. **Never commit real API keys to version control**
+2. **Do not include actual credentials in documentation**
+3. **Keep your `.env` file in `.gitignore**
+4. **Regularly rotate your API keys**
+5. **Use restricted API keys with minimal permissions**
+
+All examples in this documentation use placeholder values (`xxxxxxxxxxxx`). Replace these with your actual keys in your local `.env` file only.
+
 ### Required Environment Variables
 
-| Variable                    | Description                       | Example                                    |
-| --------------------------- | --------------------------------- | ------------------------------------------ |
-| `NOTION_API_KEY`            | Notion API integration token      | `ntn_34083349933AmK...`                    |
-| `NOTION_SOURCE_PAGE_ID`     | ID of the source Notion page      | `d5e4e5143d2c4a6fa8ca3ab2f162c22c`         |
-| `STORAGE_ACCESS_KEY_ID`     | Storage access key ID (or R2\_\*) | `AKIAIOSFODNN7EXAMPLE`                     |
-| `STORAGE_SECRET_ACCESS_KEY` | Storage secret key (or R2\_\*)    | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
-| `STORAGE_ACCOUNT_ID`        | Storage account ID (or R2\_\*)    | `abcdef123456...`                          |
-| `STORAGE_BUCKET_NAME`       | Storage bucket name (or R2\_\*)   | `notion-images`                            |
-| `STORAGE_PUBLIC_URL`        | Public URL prefix (or R2\_\*)     | `https://pub-12345.r2.dev`                 |
+| Variable                    | Description                       | Example                                            |
+| --------------------------- | --------------------------------- | -------------------------------------------------- |
+| `NOTION_API_KEY`            | Notion API integration token      | `ntn_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`         |
+| `NOTION_SOURCE_PAGE_ID`     | ID of the source Notion page      | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`                 |
+| `STORAGE_ACCESS_KEY_ID`     | Storage access key ID (or R2\_\*) | `xxxxxxxxxxxxxxxxxxxxxxxx`                         |
+| `STORAGE_SECRET_ACCESS_KEY` | Storage secret key (or R2\_\*)    | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` |
+| `STORAGE_ACCOUNT_ID`        | Storage account ID (or R2\_\*)    | `xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`                 |
+| `STORAGE_BUCKET_NAME`       | Storage bucket name (or R2\_\*)   | `your-bucket-name`                                 |
+| `STORAGE_PUBLIC_URL`        | Public URL prefix (or R2\_\*)     | `https://pub-xxxxxxxxxxxx.r2.dev`                  |
 
 ### AI Provider Configuration
 
 The system supports multiple AI providers. At least one provider must be configured:
 
-| Provider  | Required Variable   | Description                   | Example                |
-| --------- | ------------------- | ----------------------------- | ---------------------- |
-| DeepSeek  | `DEEPSEEK_API_KEY`  | API key for DeepSeek          | `sk-16cb220c7147...`   |
-| Gemini    | `GEMINI_API_KEY`    | API key for Google Gemini     | `AIzaSyCSoVGji6I9j...` |
-| DashScope | `DASHSCOPE_API_KEY` | API key for Alibaba DashScope | `sk-150a78023f63...`   |
-| OpenAI    | `AI_API_KEY`        | API key for OpenAI            | `sk-abc123...`         |
+| Provider  | Required Variable   | Description                   | Example                                  |
+| --------- | ------------------- | ----------------------------- | ---------------------------------------- |
+| DeepSeek  | `DEEPSEEK_API_KEY`  | API key for DeepSeek          | `sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx`        |
+| Gemini    | `GEMINI_API_KEY`    | API key for Google Gemini     | `AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx` |
+| DashScope | `DASHSCOPE_API_KEY` | API key for Alibaba DashScope | `sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx`        |
+| OpenAI    | `AI_API_KEY`        | API key for OpenAI            | `sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx`        |
 
 ### Optional Environment Variables
 
@@ -73,29 +85,29 @@ This flexibility allows you to either use an existing database or have the syste
 # NotionPageDb Migration System Configuration
 
 # Notion API Configuration
-NOTION_API_KEY=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
-NOTION_SOURCE_PAGE_ID=d5e4e5143d2c4a6fa8ca3ab2f162c22c
+NOTION_API_KEY=ntn_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+NOTION_SOURCE_PAGE_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 NOTION_TARGET_DATABASE_NAME=Content Database
 NOTION_RATE_LIMIT_DELAY=350
 
 # AI API Keys
 # DeepSeek Configuration
-DEEPSEEK_API_KEY=sk-16cb220c7147444986d602174c192c2e
+DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # Gemini Configuration
-GEMINI_API_KEY=AIzaSyCSoVGji6I9jI69GJPoBsW_3Ywc06sGJlE
+GEMINI_API_KEY=AIzaxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # DashScope Configuration
 # Get one from https://dashscope.aliyun.com/
-DASHSCOPE_API_KEY=sk-150a78023f634e0591345cfba57adf40
+DASHSCOPE_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # Cloudflare R2 Configuration
 # Using R2_* prefix variables - these are equivalent to STORAGE_* variables
-R2_ACCOUNT_ID=9edbc126b7b35ff11191d10bfc0ecb18
-R2_ACCESS_KEY_ID=0ed5d101c7165118e35abf546379ed72
-R2_SECRET_ACCESS_KEY=b9bd86205f6d53bd643f68ebb17c735b62f287b30af92d504c11f4c4cc28abe0
-R2_BUCKET_NAME=portfolio
-R2_PUBLIC_URL=https://pub-d90b0cc85d7d46818dd84dcb9bb4e33d.r2.dev
+R2_ACCOUNT_ID=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+R2_ACCESS_KEY_ID=xxxxxxxxxxxxxxxxxxxxxxxx
+R2_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+R2_BUCKET_NAME=your-bucket-name
+R2_PUBLIC_URL=https://pub-xxxxxxxxxxxx.r2.dev
 R2_REGION=auto
 R2_USE_PRESIGNED_URLS=false
 ```

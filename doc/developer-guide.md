@@ -696,5 +696,73 @@ export class Cache<T> {
          try {
            const result = await originalMethod.apply(this, args);
 
-           logger.debug(`
+           logger.debug(`API Response [${requestId}]`, {
+             service,
+             method,
+             response: JSON.stringify(result),
+           });
+
+           return result;
+         } catch (error) {
+           logger.error(`API Error [${requestId}]`, {
+             service,
+             method,
+             error: error instanceof Error ? error.message : error,
+           });
+           throw error;
+         }
+       };
+     };
+   }
    ```
+
+## Security Best Practices
+
+### API Key Management
+
+Proper handling of API keys and credentials is crucial for security:
+
+1. **Environment Variables Only**
+
+   - Always store API keys in environment variables
+   - Never hardcode API keys in source code
+   - Use `.env` files for local development only
+
+2. **Access Restrictions**
+
+   - Use API keys with minimal required permissions
+   - Rotate API keys regularly
+   - Never share API keys in documentation, code comments, or commit messages
+
+3. **Credential Handling**
+
+   - Never commit `.env` files or other files containing credentials to version control
+   - Add `.env` to `.gitignore`
+   - Use placeholder values (`xxxxxxxxxxxx`) in examples and documentation
+
+4. **Auditing**
+
+   - Log API key usage (but never log the actual keys)
+   - Implement access monitoring for sensitive operations
+   - Have a revocation plan for compromised credentials
+
+5. **Testing**
+   - Use separate API keys for testing environments
+   - Mock API responses in unit tests to avoid using real credentials
+   - Use fake/placeholder keys for CI/CD pipelines
+
+### Example: Loading API Keys Securely
+
+```typescript
+// Good practice
+import dotenv from "dotenv";
+dotenv.config();
+
+const apiKey = process.env.SERVICE_API_KEY;
+if (!apiKey) {
+  throw new Error("SERVICE_API_KEY is required");
+}
+
+// Bad practice - NEVER do this
+const hardcodedApiKey = "sk-1234567890abcdef"; // SECURITY RISK!
+```
