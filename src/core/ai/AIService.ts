@@ -1,12 +1,7 @@
 import axios from "axios";
 import * as fs from "fs-extra";
 import * as path from "path";
-import {
-  AIConfig,
-  ImageOptions,
-  ImageResult,
-  SummaryOptions,
-} from "../../types";
+import { AIConfig, ImageResult, SummaryOptions } from "../../types";
 import { IAIService } from "./AIService.interface";
 
 /**
@@ -229,14 +224,17 @@ export class AIService implements IAIService {
    * @param prompt The text prompt to generate the image from
    * @param options Options for image generation
    */
-  async generateImage(
+  public async generateImage(
     prompt: string,
-    options?: ImageOptions
+    options?: {
+      width?: number;
+      height?: number;
+      localPath?: string;
+      maxAttempts?: number;
+      checkInterval?: number;
+    }
   ): Promise<ImageResult> {
-    const size = options?.size || "1024*1024"; // DashScope format uses asterisk
-
     if (!this.dashscopeApiKey) {
-      console.error("DASHSCOPE_API_KEY is not set. Cannot generate image.");
       return {
         url: "",
         prompt,
@@ -246,57 +244,12 @@ export class AIService implements IAIService {
     }
 
     try {
-      // Clean and enhance the prompt
-      const cleanPrompt = prompt.replace(/['"]/g, "").trim();
+      const enhancedPrompt = this.enhanceImagePrompt(prompt);
+      const size =
+        options?.width && options?.height
+          ? `${options.width}*${options.height}`
+          : "1024*1024";
 
-      // Create a structured prompt based on the advanced formula
-      // 提示词 = 主体描述 + 场景描述 + 风格定义 + 镜头语言 + 光线设置 + 氛围词 + 细节修饰 + 技术参数
-
-      // Main subject description
-      const subjectDescription = `a professional technical illustration representing the concept of "${cleanPrompt}" WITHOUT ANY TEXT OR LABELS`;
-
-      // Scene description
-      const sceneDescription =
-        "in a clean, minimalist digital environment with subtle tech-related background elements";
-
-      // Style definition
-      const styleDefinition =
-        "modern digital art style with clean lines and a professional look, suitable for technical articles";
-
-      // Camera language
-      const cameraLanguage =
-        "frontal perspective with balanced composition, moderate depth of field focusing on the central concept";
-
-      // Lighting setup
-      const lightingSetup =
-        "soft, even lighting with subtle highlights to emphasize important elements, cool blue accent lighting";
-
-      // Atmosphere words
-      const atmosphereWords =
-        "informative, innovative, precise, and engaging atmosphere";
-
-      // Detail modifiers
-      const detailModifiers =
-        "with subtle grid patterns, simplified icons or symbols related to the prompt, using a cohesive color palette of blues, teals, and neutral tones";
-
-      // Technical parameters
-      const technicalParameters =
-        "high-resolution, sharp details, professional vector-like quality";
-
-      // Combine all components into a comprehensive prompt
-      const enhancedPrompt = `${subjectDescription} ${sceneDescription}. 
-      Style: ${styleDefinition}. 
-      Composition: ${cameraLanguage}. 
-      Lighting: ${lightingSetup}. 
-      Atmosphere: ${atmosphereWords}. 
-      Details: ${detailModifiers}. 
-      Quality: ${technicalParameters}.
-      
-      The illustration should visually communicate the key concepts: ${cleanPrompt}
-      
-      IMPORTANT: DO NOT INCLUDE ANY TEXT, WORDS, LABELS, OR CHARACTERS IN THE IMAGE. The illustration should be entirely visual without any textual elements.`;
-
-      // Enhanced negative prompt to avoid unwanted elements
       const negative_prompt =
         "text, words, writing, watermark, signature, blurry, low quality, ugly, distorted, photorealistic, photograph, human faces, hands, cluttered, chaotic layout, overly complex, childish, cartoon-like, unprofessional, Chinese characters, Chinese text, Asian characters, characters, text overlay, letters, numbers, any text, Asian text";
 
@@ -331,29 +284,55 @@ export class AIService implements IAIService {
         !createTaskResponse.data.output ||
         !createTaskResponse.data.output.task_id
       ) {
-        throw new Error("No task ID returned from DashScope API");
+        return {
+          url: "",
+          prompt,
+          success: false,
+          error: "No task ID returned from DashScope API",
+        };
       }
 
       const taskId = createTaskResponse.data.output.task_id;
       console.log(`Task created successfully with ID: ${taskId}`);
 
       // Step 2: Poll for the task result
-      const imageUrl = await this.getDashScopeImageResult(taskId);
+      const imageUrl = await this.getDashScopeImageResult(
+        taskId,
+        options?.maxAttempts,
+        options?.checkInterval
+      );
 
       if (!imageUrl) {
-        throw new Error("Failed to get image URL from DashScope API");
+        return {
+          url: "",
+          prompt,
+          success: false,
+          error: "Failed to get image URL from DashScope API",
+        };
       }
 
       // Download the image if a local path is specified
       if (options?.localPath) {
-        const localPath = await this.downloadImage(imageUrl, options.localPath);
-
-        return {
-          url: imageUrl,
-          localPath,
-          prompt,
-          success: true,
-        };
+        try {
+          const localPath = await this.downloadImage(
+            imageUrl,
+            options.localPath
+          );
+          return {
+            url: imageUrl,
+            localPath,
+            prompt,
+            success: true,
+          };
+        } catch (error) {
+          console.error("Error generating image with DashScope:", error);
+          return {
+            url: "",
+            prompt,
+            success: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
       }
 
       return {
@@ -506,23 +485,15 @@ export class AIService implements IAIService {
       await fs.ensureDir(path.dirname(localPath));
 
       // Download the image
-      const response = await axios({
-        url,
-        method: "GET",
-        responseType: "stream",
+      const response = await axios.get(url, {
+        responseType: "arraybuffer",
       });
 
-      // Create write stream and save
-      const writer = fs.createWriteStream(localPath);
-      response.data.pipe(writer);
-
-      // Return a promise that resolves when the file is saved
-      return new Promise<string>((resolve, reject) => {
-        writer.on("finish", () => resolve(localPath));
-        writer.on("error", reject);
-      });
+      // Write the file directly
+      await fs.writeFile(localPath, response.data);
+      return localPath;
     } catch (error) {
-      console.error("Error downloading image:", error);
+      console.error("Error generating image with DashScope:", error);
       throw error;
     }
   }
@@ -533,5 +504,62 @@ export class AIService implements IAIService {
    */
   private async delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Enhances a prompt for better image generation
+   * @param prompt The original prompt
+   * @returns The enhanced prompt
+   */
+  private enhanceImagePrompt(prompt: string): string {
+    // Clean and enhance the prompt
+    const cleanPrompt = prompt.replace(/['"]/g, "").trim();
+
+    // Create a structured prompt based on the advanced formula
+    // 提示词 = 主体描述 + 场景描述 + 风格定义 + 镜头语言 + 光线设置 + 氛围词 + 细节修饰 + 技术参数
+
+    // Main subject description
+    const subjectDescription = `a professional technical illustration representing the concept of "${cleanPrompt}" WITHOUT ANY TEXT OR LABELS`;
+
+    // Scene description
+    const sceneDescription =
+      "in a clean, minimalist digital environment with subtle tech-related background elements";
+
+    // Style definition
+    const styleDefinition =
+      "modern digital art style with clean lines and a professional look, suitable for technical articles";
+
+    // Camera language
+    const cameraLanguage =
+      "frontal perspective with balanced composition, moderate depth of field focusing on the central concept";
+
+    // Lighting setup
+    const lightingSetup =
+      "soft, even lighting with subtle highlights to emphasize important elements, cool blue accent lighting";
+
+    // Atmosphere words
+    const atmosphereWords =
+      "informative, innovative, precise, and engaging atmosphere";
+
+    // Detail modifiers
+    const detailModifiers =
+      "with subtle grid patterns, simplified icons or symbols related to the prompt, using a cohesive color palette of blues, teals, and neutral tones";
+
+    // Technical parameters
+    const technicalParameters =
+      "high-resolution, sharp details, professional vector-like quality";
+
+    // Combine all components into a comprehensive prompt
+    return `${subjectDescription} ${sceneDescription}. 
+    Style: ${styleDefinition}. 
+    Composition: ${cameraLanguage}. 
+    Lighting: ${lightingSetup}. 
+    Atmosphere: ${atmosphereWords}. 
+    Details: ${detailModifiers}. 
+    Quality: ${technicalParameters}.
+    
+    The illustration should visually communicate the key concepts: ${cleanPrompt}
+    
+    IMPORTANT: DO NOT INCLUDE ANY TEXT, WORDS, LABELS, OR CHARACTERS IN THE IMAGE. The illustration should be entirely visual without any textual elements.`;
   }
 }

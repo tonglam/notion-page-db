@@ -187,5 +187,88 @@ describe("MigrationManager", () => {
       expect(imageProcessor.processAllImages).not.toHaveBeenCalled();
       expect(databaseUpdater.updateEntries).not.toHaveBeenCalled();
     });
+
+    it("should handle image processing failure", async () => {
+      vi.mocked(imageProcessor.processAllImages).mockRejectedValueOnce(
+        new Error("Image processing failed")
+      );
+
+      const result = await migrationManager.migrate();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error).toContain("Image processing failed");
+      expect(databaseUpdater.updateEntries).not.toHaveBeenCalled();
+    });
+
+    it("should handle database update failure", async () => {
+      vi.mocked(databaseUpdater.updateEntries).mockResolvedValueOnce([
+        { success: false, entryId: "page1", error: "Update failed" },
+        { success: true, entryId: "page2" },
+      ]);
+
+      const result = await migrationManager.migrate();
+
+      expect(result.success).toBe(true);
+      expect(result.totalPages).toBe(2);
+      expect(result.updatedPages).toBe(1);
+      expect(result.failedPages).toBe(1);
+    });
+
+    it("should skip image processing when disabled in options", async () => {
+      const result = await migrationManager.migrate({ processImages: false });
+
+      expect(result.success).toBe(true);
+      expect(imageProcessor.processAllImages).not.toHaveBeenCalled();
+      expect(databaseUpdater.updateEntries).toHaveBeenCalled();
+    });
+
+    it("should skip content enhancement when disabled in options", async () => {
+      const result = await migrationManager.migrate({ enhanceContent: false });
+
+      expect(result.success).toBe(true);
+      expect(contentProcessor.enhanceAllContent).toHaveBeenCalledWith(false);
+    });
+
+    it("should handle initialization failures", async () => {
+      vi.mocked(imageProcessor.initialize).mockRejectedValueOnce(
+        new Error("Initialization failed")
+      );
+
+      const result = await migrationManager.migrate();
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain("Initialization failed");
+      expect(databaseVerifier.verifyDatabase).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("service getters", () => {
+    it("should return initialized services", () => {
+      expect(migrationManager.getConfigManager()).toBeDefined();
+      expect(migrationManager.getNotionDatabase()).toBeDefined();
+      expect(migrationManager.getNotionContent()).toBeDefined();
+      expect(migrationManager.getAIService()).toBeDefined();
+      expect(migrationManager.getStorageService()).toBeDefined();
+    });
+  });
+
+  describe("error handling", () => {
+    it("should handle invalid configuration path", () => {
+      const invalidPath = "invalid/path/config.json";
+
+      expect(() => new MigrationManager(invalidPath)).not.toThrow();
+      expect(configManager.loadConfig).toHaveBeenCalledWith(invalidPath);
+    });
+
+    it("should handle database verifier initialization failure", async () => {
+      vi.mocked(DatabaseVerifier).mockImplementationOnce(() => {
+        throw new Error("Verifier initialization failed");
+      });
+
+      expect(() => new MigrationManager()).toThrow(
+        "Verifier initialization failed"
+      );
+    });
   });
 });

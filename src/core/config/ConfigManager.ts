@@ -232,7 +232,7 @@ export class ConfigManager implements IConfigManager {
         result.errors.push("R2_BUCKET_NAME is required");
       }
 
-      if (!this.config.storage.publicUrlPrefix) {
+      if (!this.config.storage.baseUrl) {
         result.errors.push(
           "R2_PUBLIC_URL is not set. Public URLs cannot be generated."
         );
