@@ -28,7 +28,8 @@ export class ConfigManager implements IConfigManager {
       notion: {
         apiKey: process.env.NOTION_API_KEY,
         sourcePageId: process.env.NOTION_SOURCE_PAGE_ID,
-        targetDatabaseId: process.env.NOTION_TARGET_DATABASE_ID,
+        targetDatabaseName: process.env.NOTION_TARGET_DATABASE_NAME,
+        resolvedDatabaseId: process.env.NOTION_TARGET_DATABASE_ID,
         rateLimitDelay: parseInt(
           process.env.NOTION_RATE_LIMIT_DELAY || "350",
           10
@@ -120,7 +121,9 @@ export class ConfigManager implements IConfigManager {
         apiKey: process.env.NOTION_API_KEY || "",
         sourcePageId:
           process.env.SOURCE_PAGE_ID || process.env.NOTION_SOURCE_PAGE_ID || "",
-        targetDatabaseId:
+        targetDatabaseName:
+          process.env.NOTION_TARGET_DATABASE_NAME || "Content Database",
+        resolvedDatabaseId:
           process.env.NOTION_TARGET_DATABASE_ID ||
           process.env.NOTION_DATABASE_ID ||
           "",

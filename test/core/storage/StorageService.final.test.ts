@@ -39,10 +39,8 @@ vi.mock("fs-extra", () => ({
 
 // Mock path
 vi.mock("path", () => ({
-  basename: vi
-    .fn()
-    .mockImplementation((filePath) => filePath.split("/").pop() || ""),
-  extname: vi.fn().mockImplementation((filePath) => ".jpg"),
+  basename: vi.fn().mockImplementation((path) => path.split("/").pop() || ""),
+  extname: vi.fn().mockImplementation(() => ".jpg"),
   join: vi.fn().mockImplementation((...args) => args.join("/")),
 }));
 
@@ -93,7 +91,7 @@ describe("StorageService Final Coverage", () => {
     const imagePath = "/path/to/test-image.jpg";
 
     // Create a metadata object where tags is not an array but a string
-    // @ts-expect-error - intentionally sending invalid type to test runtime behavior
+    // @ts-expect-error - Intentionally using string instead of string[] for tags to test runtime error handling
     const metadataWithStringTags = {
       title: "Test Image",
       tags: "tag1,tag2,tag3", // String instead of array

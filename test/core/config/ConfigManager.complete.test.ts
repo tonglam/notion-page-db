@@ -76,7 +76,10 @@ describe("ConfigManager Complete Coverage", () => {
       process.env.NOTION_DATABASE_ID = "fallback-db-id";
       const configManager = new ConfigManager();
       configManager.loadConfig();
-      expect(configManager.getNotionConfig().targetDatabaseId).toEqual(
+      expect(configManager.getNotionConfig().targetDatabaseName).toEqual(
+        "Content Database"
+      );
+      expect(configManager.getNotionConfig().resolvedDatabaseId).toEqual(
         "fallback-db-id"
       );
     });

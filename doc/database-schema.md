@@ -1,14 +1,25 @@
 # Notion Database Schema
 
-This document specifies the Notion database schema for the NotionPageDb Migration System. The schema is based on the actual Notion database with ID `1ab7ef86-a5ad-81ab-a4cb-f8b8f37ec491`.
+This document specifies the Notion database schema for the NotionPageDb Migration System.
 
 ## Database Overview
 
 The Notion database serves as the central repository for all migrated content. It stores metadata, content references, and generated assets for each page from the source Notion content.
 
+## Database Creation and Resolution
+
+The system uses the following approach for working with Notion databases:
+
+1. First, the system looks for an existing database by name using the value of `NOTION_TARGET_DATABASE_NAME` (defaults to "Content Database" if not specified).
+2. If a database with that name is found, it is used for migration.
+3. If no database is found, a new one is created under the source page with the required schema.
+4. The database ID is resolved during this process and used for all subsequent operations.
+
+This approach allows users to either create a new database automatically or use an existing one by matching its name.
+
 ## Required Properties
 
-The following properties are present in the actual database:
+The following properties are present in the database:
 
 | Property Name | Type         | Description                        | Required | Created If Missing |
 | ------------- | ------------ | ---------------------------------- | -------- | ------------------ |

@@ -131,11 +131,32 @@ describe("ConfigManager Methods", () => {
       // as they might be set from the environment or have default values
       expect(notionConfig).toHaveProperty("apiKey");
       expect(notionConfig).toHaveProperty("sourcePageId");
-      expect(notionConfig).toHaveProperty("targetDatabaseId");
+      expect(notionConfig).toHaveProperty("targetDatabaseName");
+      expect(notionConfig).toHaveProperty("resolvedDatabaseId");
       expect(notionConfig).toHaveProperty("rateLimitDelay");
     });
 
     it("should return the merged notion configuration when a config file is loaded", () => {
+      // Mock environment variables
+      process.env.NOTION_API_KEY = "env-notion-api-key";
+      process.env.NOTION_SOURCE_PAGE_ID = "env-source-page-id";
+      process.env.NOTION_TARGET_DATABASE_ID = "test-database-id"; // Set this to match the expected value
+      process.env.NOTION_RATE_LIMIT_DELAY = "300";
+
+      // Mock fs.existsSync to return true for our config file
+      (fs.existsSync as any).mockReturnValue(true);
+
+      // Mock fs.readFileSync to return our mock config
+      (fs.readFileSync as any).mockReturnValue(
+        JSON.stringify({
+          notion: {
+            apiKey: "test-notion-api-key",
+            sourcePageId: "test-source-page-id",
+            rateLimitDelay: 400,
+          },
+        })
+      );
+
       configManager = new ConfigManager();
       configManager.loadConfig(mockConfigPath);
 
@@ -144,7 +165,8 @@ describe("ConfigManager Methods", () => {
       expect(notionConfig).toBeDefined();
       expect(notionConfig.apiKey).toBe("test-notion-api-key");
       expect(notionConfig.sourcePageId).toBe("test-source-page-id");
-      expect(notionConfig.targetDatabaseId).toBe("test-database-id");
+      expect(notionConfig.targetDatabaseName).toBe("Content Database");
+      expect(notionConfig.resolvedDatabaseId).toBe("test-database-id");
       expect(notionConfig.rateLimitDelay).toBe(400);
     });
   });
@@ -248,7 +270,8 @@ describe("ConfigManager Methods", () => {
       const aiConfig = configManager.getAIConfig();
 
       expect(notionConfig.sourcePageId).toBe("alt-source-page-id");
-      expect(notionConfig.targetDatabaseId).toBe("alt-database-id");
+      expect(notionConfig.targetDatabaseName).toBe("Content Database");
+      expect(notionConfig.resolvedDatabaseId).toBe("alt-database-id");
 
       expect(aiConfig.apiKey).toBe("alt-ai-api-key");
 

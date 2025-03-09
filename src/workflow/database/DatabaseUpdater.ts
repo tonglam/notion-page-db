@@ -7,18 +7,34 @@ import { ContentPage, NotionEntry, UpdateResult } from "../../types";
  */
 export class DatabaseUpdater {
   private notionDatabase: INotionDatabase;
-  private databaseId: string;
+  private databaseId: string | undefined;
   private existingEntries: Map<string, NotionEntry>;
 
   /**
    * Creates a new DatabaseUpdater instance
    * @param notionDatabase The Notion database service
-   * @param databaseId ID of the database to update
+   * @param databaseId Optional ID of the database to update
    */
-  constructor(notionDatabase: INotionDatabase, databaseId: string) {
+  constructor(notionDatabase: INotionDatabase, databaseId?: string) {
     this.notionDatabase = notionDatabase;
     this.databaseId = databaseId;
     this.existingEntries = new Map<string, NotionEntry>();
+  }
+
+  /**
+   * Sets the database ID after construction
+   * @param databaseId The database ID to use
+   */
+  setDatabaseId(databaseId: string): void {
+    this.databaseId = databaseId;
+  }
+
+  /**
+   * Gets the current database ID
+   * @returns The current database ID
+   */
+  getDatabaseId(): string | undefined {
+    return this.databaseId;
   }
 
   /**
@@ -26,6 +42,10 @@ export class DatabaseUpdater {
    */
   async initialize(): Promise<void> {
     try {
+      if (!this.databaseId) {
+        throw new Error("Database ID must be set before initialization");
+      }
+
       console.log(
         `Initializing database updater for database: ${this.databaseId}`
       );
@@ -65,6 +85,10 @@ export class DatabaseUpdater {
    */
   async updateEntry(contentPage: ContentPage): Promise<UpdateResult> {
     try {
+      if (!this.databaseId) {
+        throw new Error("Database ID must be set before updating entries");
+      }
+
       console.log(`Updating entry for page: ${contentPage.title}`);
 
       // Check if an entry already exists for this page

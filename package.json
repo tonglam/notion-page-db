@@ -1,7 +1,7 @@
 {
   "name": "notion-page-db",
   "version": "1.0.0",
-  "description": "Migration utility for Notion content to database",
+  "description": "A TypeScript utility for extracting, transforming, and migrating Notion page content to structured databases. Supports AWS S3 storage integration for assets, with a focus on preserving content structure and relationships while enabling AI-ready data formats.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -36,8 +36,8 @@
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
     "@types/node": "^20.10.4",
-    "@typescript-eslint/eslint-plugin": "^6.19.1",
-    "@typescript-eslint/parser": "^6.19.1",
+    "@typescript-eslint/eslint-plugin": "^8.26.0",
+    "@typescript-eslint/parser": "^8.26.0",
     "@vitest/coverage-v8": "^3.0.8",
     "@vitest/ui": "^3.0.8",
     "eslint": "^8.57.1",
@@ -46,7 +46,7 @@
     "jsdom": "^26.0.0",
     "markdownlint-cli2": "^0.17.2",
     "prettier": "^3.2.4",
-    "typescript": "^5.3.3",
+    "typescript": "^5.8.2",
     "vitest": "^3.0.8"
   }
 }

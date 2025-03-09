@@ -8,64 +8,96 @@ The system uses environment variables for most configuration. These can be set i
 
 ### Required Environment Variables
 
-| Variable               | Description                      | Example                                    |
-| ---------------------- | -------------------------------- | ------------------------------------------ |
-| `NOTION_API_KEY`       | Notion API integration token     | `secret_abcd1234...`                       |
-| `SOURCE_PAGE_ID`       | ID of the source Notion page     | `d5e4e5143d2c4a6fa8ca3ab2f162c22c`         |
-| `NOTION_DATABASE_ID`   | ID of the target Notion database | `1ab7ef86-a5ad-81ab-a4cb-f8b8f37ec491`     |
-| `DEEPSEEK_API_KEY`     | API key for DeepSeek             | `ds_key_1234abcd...`                       |
-| `R2_ACCOUNT_ID`        | Cloudflare account ID            | `abcdef123456...`                          |
-| `R2_ACCESS_KEY_ID`     | R2 access key ID                 | `AKIAIOSFODNN7EXAMPLE`                     |
-| `R2_SECRET_ACCESS_KEY` | R2 secret access key             | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
-| `R2_BUCKET_NAME`       | R2 bucket name                   | `notion-images`                            |
-| `R2_PUBLIC_URL`        | Public URL prefix for R2 bucket  | `https://pub-12345.r2.dev`                 |
+| Variable                    | Description                       | Example                                    |
+| --------------------------- | --------------------------------- | ------------------------------------------ |
+| `NOTION_API_KEY`            | Notion API integration token      | `ntn_34083349933AmK...`                    |
+| `NOTION_SOURCE_PAGE_ID`     | ID of the source Notion page      | `d5e4e5143d2c4a6fa8ca3ab2f162c22c`         |
+| `STORAGE_ACCESS_KEY_ID`     | Storage access key ID (or R2\_\*) | `AKIAIOSFODNN7EXAMPLE`                     |
+| `STORAGE_SECRET_ACCESS_KEY` | Storage secret key (or R2\_\*)    | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
+| `STORAGE_ACCOUNT_ID`        | Storage account ID (or R2\_\*)    | `abcdef123456...`                          |
+| `STORAGE_BUCKET_NAME`       | Storage bucket name (or R2\_\*)   | `notion-images`                            |
+| `STORAGE_PUBLIC_URL`        | Public URL prefix (or R2\_\*)     | `https://pub-12345.r2.dev`                 |
+
+### AI Provider Configuration
+
+The system supports multiple AI providers. At least one provider must be configured:
+
+| Provider  | Required Variable   | Description                   | Example                |
+| --------- | ------------------- | ----------------------------- | ---------------------- |
+| DeepSeek  | `DEEPSEEK_API_KEY`  | API key for DeepSeek          | `sk-16cb220c7147...`   |
+| Gemini    | `GEMINI_API_KEY`    | API key for Google Gemini     | `AIzaSyCSoVGji6I9j...` |
+| DashScope | `DASHSCOPE_API_KEY` | API key for Alibaba DashScope | `sk-150a78023f63...`   |
+| OpenAI    | `AI_API_KEY`        | API key for OpenAI            | `sk-abc123...`         |
 
 ### Optional Environment Variables
 
-| Variable                    | Description                           | Default                   | Example            |
-| --------------------------- | ------------------------------------- | ------------------------- | ------------------ |
-| `NOTION_RATE_LIMIT_DELAY`   | Delay between Notion API calls (ms)   | `350`                     | `500`              |
-| `AI_PROVIDER`               | AI provider for text services         | `deepseek`                | `openai`           |
-| `AI_MODEL_ID`               | Model ID for text generation          | `deepseek-r1-chat`        | `gpt-4`            |
-| `IMAGE_MODEL`               | Model for image generation            | `dall-e-3`                | `sd-xl`            |
-| `AI_MAX_RETRIES`            | Maximum retries for AI calls          | `3`                       | `5`                |
-| `STORAGE_PROVIDER`          | Cloud storage provider                | `r2`                      | `s3`               |
-| `LOG_LEVEL`                 | Logging level                         | `info`                    | `debug`            |
-| `BATCH_SIZE`                | Number of items to process in a batch | `5`                       | `10`               |
-| `DELAY_BETWEEN_BATCHES`     | Delay between processing batches (ms) | `1000`                    | `2000`             |
-| `MAX_CONCURRENT_OPERATIONS` | Maximum concurrent operations         | `3`                       | `5`                |
-| `STATE_FILE_PATH`           | Path to state file                    | `./processing-state.json` | `/data/state.json` |
+| Variable                      | Description                           | Default                   | Example            |
+| ----------------------------- | ------------------------------------- | ------------------------- | ------------------ |
+| `NOTION_TARGET_DATABASE_NAME` | Name of the target Notion database    | `Content Database`        | `Blog Posts`       |
+| `NOTION_RATE_LIMIT_DELAY`     | Delay between Notion API calls (ms)   | `350`                     | `500`              |
+| `AI_PROVIDER`                 | Default AI provider for text services | `deepseek`                | `openai`           |
+| `AI_MODEL`                    | Model for text generation             | Provider-specific default | `gpt-3.5-turbo`    |
+| `AI_IMAGE_MODEL`              | Model for image generation            | `dall-e-3`                | `sd-xl`            |
+| `AI_MAX_TOKENS`               | Max tokens for AI responses           | `1000`                    | `2000`             |
+| `AI_TEMPERATURE`              | Temperature for AI responses          | `0.7`                     | `0.5`              |
+| `STORAGE_REGION`              | Storage region (or R2\_\*)            | `auto`                    | `us-east-1`        |
+| `STORAGE_USE_PRESIGNED_URLS`  | Use presigned URLs (or R2\_\*)        | `false`                   | `true`             |
+| `LOG_LEVEL`                   | Logging level                         | `info`                    | `debug`            |
+| `BATCH_SIZE`                  | Number of items to process in a batch | `5`                       | `10`               |
+| `DELAY_BETWEEN_BATCHES`       | Delay between processing batches (ms) | `1000`                    | `2000`             |
+| `MAX_CONCURRENT_OPERATIONS`   | Maximum concurrent operations         | `3`                       | `5`                |
+| `STATE_FILE_PATH`             | Path to state file                    | `./processing-state.json` | `/data/state.json` |
+
+### Storage Variable Naming Conventions
+
+The system supports two naming conventions for storage variables:
+
+1. `STORAGE_*` prefix (e.g., `STORAGE_ACCESS_KEY_ID`)
+2. `R2_*` prefix (e.g., `R2_ACCESS_KEY_ID`)
+
+Both naming conventions are equivalent and the system will check for both. If both are provided, the `STORAGE_*` variables take precedence.
+
+### Database Resolution Process
+
+The system uses the following process to determine which Notion database to use:
+
+1. It will search for a database with the name specified in `NOTION_TARGET_DATABASE_NAME`.
+2. If a database with that name is found, it will use that database.
+3. If no matching database is found, it will create a new database with that name under the source page.
+
+This flexibility allows you to either use an existing database or have the system automatically create a database for you.
 
 ### Example .env File
 
 ```env
+# NotionPageDb Migration System Configuration
+
 # Notion API Configuration
-NOTION_API_KEY=secret_abcd1234...
-SOURCE_PAGE_ID=d5e4e5143d2c4a6fa8ca3ab2f162c22c
-NOTION_DATABASE_ID=1ab7ef86-a5ad-81ab-a4cb-f8b8f37ec491
+NOTION_API_KEY=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
+NOTION_SOURCE_PAGE_ID=d5e4e5143d2c4a6fa8ca3ab2f162c22c
+NOTION_TARGET_DATABASE_NAME=Content Database
 NOTION_RATE_LIMIT_DELAY=350
 
-# AI Service Configuration
-DEEPSEEK_API_KEY=ds_key_1234abcd...
-AI_PROVIDER=deepseek
-AI_MODEL_ID=deepseek-r1-chat
-IMAGE_MODEL=dall-e-3
-AI_MAX_RETRIES=3
+# AI API Keys
+# DeepSeek Configuration
+DEEPSEEK_API_KEY=sk-16cb220c7147444986d602174c192c2e
 
-# Storage Configuration
-R2_ACCOUNT_ID=abcdef123456...
-R2_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
-R2_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-R2_BUCKET_NAME=notion-images
-R2_PUBLIC_URL=https://pub-12345.r2.dev
-STORAGE_PROVIDER=r2
+# Gemini Configuration
+GEMINI_API_KEY=AIzaSyCSoVGji6I9jI69GJPoBsW_3Ywc06sGJlE
 
-# Processing Configuration
-LOG_LEVEL=info
-BATCH_SIZE=5
-DELAY_BETWEEN_BATCHES=1000
-MAX_CONCURRENT_OPERATIONS=3
-STATE_FILE_PATH=./processing-state.json
+# DashScope Configuration
+# Get one from https://dashscope.aliyun.com/
+DASHSCOPE_API_KEY=sk-150a78023f634e0591345cfba57adf40
+
+# Cloudflare R2 Configuration
+# Using R2_* prefix variables - these are equivalent to STORAGE_* variables
+R2_ACCOUNT_ID=9edbc126b7b35ff11191d10bfc0ecb18
+R2_ACCESS_KEY_ID=0ed5d101c7165118e35abf546379ed72
+R2_SECRET_ACCESS_KEY=b9bd86205f6d53bd643f68ebb17c735b62f287b30af92d504c11f4c4cc28abe0
+R2_BUCKET_NAME=portfolio
+R2_PUBLIC_URL=https://pub-d90b0cc85d7d46818dd84dcb9bb4e33d.r2.dev
+R2_REGION=auto
+R2_USE_PRESIGNED_URLS=false
 ```
 
 ## Configuration Files

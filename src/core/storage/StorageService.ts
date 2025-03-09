@@ -285,36 +285,37 @@ export class StorageService implements IStorageService {
   }
 
   /**
-   * Gets the content type from a file key based on extension
-   * @param key Key to get content type for
+   * Get the content type based on the file extension
+   * @param key File path or key
+   * @returns Content type string
    */
   private getContentTypeFromKey(key: string): string {
     const extension = path.extname(key).toLowerCase();
 
     switch (extension) {
-      case ".jpg":
-      case ".jpeg":
-        return "image/jpeg";
-      case ".png":
-        return "image/png";
-      case ".gif":
-        return "image/gif";
-      case ".webp":
-        return "image/webp";
-      case ".pdf":
-        return "application/pdf";
-      case ".json":
-        return "application/json";
-      case ".txt":
-        return "text/plain";
-      case ".html":
-        return "text/html";
-      case ".css":
-        return "text/css";
-      case ".js":
-        return "application/javascript";
-      default:
-        return "application/octet-stream";
+    case ".jpg":
+    case ".jpeg":
+      return "image/jpeg";
+    case ".png":
+      return "image/png";
+    case ".gif":
+      return "image/gif";
+    case ".webp":
+      return "image/webp";
+    case ".pdf":
+      return "application/pdf";
+    case ".json":
+      return "application/json";
+    case ".txt":
+      return "text/plain";
+    case ".html":
+      return "text/html";
+    case ".css":
+      return "text/css";
+    case ".js":
+      return "application/javascript";
+    default:
+      return "application/octet-stream";
     }
   }
 }

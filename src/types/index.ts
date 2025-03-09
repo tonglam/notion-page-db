@@ -6,7 +6,8 @@
 export interface NotionConfig {
   apiKey: string;
   sourcePageId: string;
-  targetDatabaseId: string;
+  targetDatabaseName?: string;
+  resolvedDatabaseId?: string;
   rateLimitDelay?: number;
 }
 

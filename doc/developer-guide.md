@@ -173,6 +173,70 @@ export class ExampleService {
 }
 ```
 
+### AI Service Integration
+
+The system supports multiple AI providers through a unified interface. The AI service layer is designed to be provider-agnostic, allowing easy switching between different AI services.
+
+#### Supported AI Providers
+
+The system currently supports the following AI providers:
+
+- **DeepSeek**: Primary text model for content analysis and generation
+- **Gemini**: Google's AI model for specific reasoning tasks
+- **DashScope**: Alibaba's AI service for specialized generation
+- **OpenAI**: Optional provider for text and image generation
+
+#### Provider Configuration
+
+Each provider is configured through environment variables. The system will automatically select available providers based on the presence of API keys:
+
+```typescript
+// Example provider configuration
+interface AIProviderConfig {
+  deepseek?: {
+    apiKey: string;
+    modelId?: string;
+  };
+  gemini?: {
+    apiKey: string;
+    modelId?: string;
+  };
+  dashscope?: {
+    apiKey: string;
+    modelId?: string;
+  };
+  openai?: {
+    apiKey: string;
+    modelId?: string;
+    imageModelId?: string;
+  };
+}
+```
+
+#### Provider Selection Strategy
+
+The system uses the following strategy to select an AI provider:
+
+1. If a specific provider is requested for an operation, it will attempt to use that provider
+2. If no specific provider is requested, it will use the default provider specified in `AI_PROVIDER`
+3. If the default provider is not available, it will try each configured provider in order of priority
+4. If no provider is available for the requested operation, it will throw an error
+
+This approach provides flexibility while ensuring the system can operate with any subset of configured providers.
+
+### Storage Service Integration
+
+The system supports cloud storage services through a unified interface, with Cloudflare R2 as the primary implementation.
+
+#### Storage Variable Naming Conventions
+
+The system supports two naming conventions for storage variables:
+
+1. `STORAGE_*` prefix (e.g., `STORAGE_ACCESS_KEY_ID`)
+2. `R2_*` prefix (e.g., `R2_ACCESS_KEY_ID`)
+
+Both naming conventions are equivalent and the system will check for both. If both are provided, the `STORAGE_*` variables take precedence.
+
 ## Development Workflow
 
 ### Feature Development Process
@@ -632,135 +696,5 @@ export class Cache<T> {
          try {
            const result = await originalMethod.apply(this, args);
 
-           logger.debug(`API Response [${requestId}]`, {
-             service,
-             method,
-             status: "success",
-           });
-
-           return result;
-         } catch (error) {
-           logger.error(`API Error [${requestId}]`, {
-             service,
-             method,
-             error,
-           });
-
-           throw error;
-         }
-       };
-
-       return descriptor;
-     };
-   }
+           logger.debug(`
    ```
-
-3. **Performance Monitoring**:
-
-   ```typescript
-   // Example: Timing operations
-   export function timed<T>(
-     operation: () => Promise<T>,
-     logger?: Logger,
-     description?: string
-   ): Promise<T> {
-     const start = performance.now();
-
-     return operation()
-       .then((result) => {
-         const duration = performance.now() - start;
-
-         if (logger) {
-           logger.debug(
-             `Operation ${description || ""} took ${duration.toFixed(2)}ms`
-           );
-         }
-
-         return result;
-       })
-       .catch((error) => {
-         const duration = performance.now() - start;
-
-         if (logger) {
-           logger.error(
-             `Operation ${description || ""} failed after ${duration.toFixed(
-               2
-             )}ms`,
-             error
-           );
-         }
-
-         throw error;
-       });
-   }
-   ```
-
-### Common Issues and Solutions
-
-1. **Notion API Rate Limiting**:
-
-   - Problem: Hitting Notion API rate limits
-   - Solution: Implement proper rate limiting with exponential backoff
-
-2. **Memory Leaks**:
-
-   - Problem: Memory usage grows over time
-   - Solution: Use memory profiling and ensure proper cleanup of resources
-
-3. **Inconsistent Database State**:
-
-   - Problem: Database entries are in an inconsistent state
-   - Solution: Implement atomic operations and proper state tracking
-
-4. **AI Service Errors**:
-   - Problem: AI service returns unexpected errors
-   - Solution: Implement fallback mechanisms and retry strategies
-
-## Deployment
-
-### Production Deployment
-
-1. **Build for Production**:
-
-   ```bash
-   npm run build
-   ```
-
-2. **Environment Configuration**:
-
-   - Set up production environment variables
-   - Use secure storage for API keys
-
-3. **Containerization (Optional)**:
-
-   - Use Docker for deployment
-   - Create a Dockerfile with appropriate configuration
-
-4. **Monitoring**:
-   - Set up logging and error tracking
-   - Implement performance monitoring
-   - Configure alerts for critical issues
-
-## Contributing Guidelines
-
-### Pull Request Process
-
-1. Ensure your code passes linting and tests
-2. Update documentation to reflect changes
-3. Include tests for new functionality
-4. Submit a pull request with a clear description
-
-### Code Review Guidelines
-
-1. Verify code follows project style and best practices
-2. Ensure proper error handling
-3. Check for edge cases
-4. Verify tests are comprehensive
-5. Review performance implications
-
-## Additional Resources
-
-- [TypeScript Documentation](https://www.typescriptlang.org/docs/)
-- [Notion API Documentation](https://developers.notion.com/reference/intro)
-- [AWS S3 SDK Documentation](https://docs.aws.amazon.com/AWSJavaScriptSDK/v3/latest/clients/client-s3/)
-- [Vercel AI SDK Documentation](https://sdk.vercel.ai/docs)

@@ -66,10 +66,11 @@ export class MigrationManager {
       this.aiService,
       notionConfig.sourcePageId
     );
-    this.databaseUpdater = new DatabaseUpdater(
-      this.notionDatabase,
-      notionConfig.targetDatabaseId
-    );
+
+    // Initialize database updater without the database ID
+    // We'll resolve it during migration
+    this.databaseUpdater = new DatabaseUpdater(this.notionDatabase);
+
     this.imageProcessor = new ImageProcessor(
       this.aiService,
       this.storageService
@@ -87,12 +88,23 @@ export class MigrationManager {
       // Initialize components
       await this.imageProcessor.initialize();
 
-      // Verify the database
+      // Verify or create the database
       console.log("Verifying database...");
       const notionConfig = this.configManager.getNotionConfig();
-      const verificationResult = await this.databaseVerifier.verifyDatabase(
-        notionConfig.targetDatabaseId
-      );
+
+      // First, check if we have a direct database ID from config
+      let verificationResult;
+      if (notionConfig.resolvedDatabaseId) {
+        // If we already have a database ID, verify it directly
+        verificationResult = await this.databaseVerifier.verifyDatabase(
+          notionConfig.resolvedDatabaseId
+        );
+      } else {
+        // Otherwise, try to find or create the database using the source page as parent
+        verificationResult = await this.databaseVerifier.createDatabaseIfNeeded(
+          notionConfig.sourcePageId
+        );
+      }
 
       if (!verificationResult.success) {
         return {
@@ -101,9 +113,25 @@ export class MigrationManager {
         };
       }
 
-      console.log("Database verified successfully");
+      console.log(
+        `Database verified successfully: ${verificationResult.databaseId}`
+      );
 
-      // Initialize the database updater
+      // Update the database ID in our configuration
+      if (verificationResult.databaseId) {
+        notionConfig.resolvedDatabaseId = verificationResult.databaseId;
+      }
+
+      // Initialize the database updater with the resolved database ID
+      if (notionConfig.resolvedDatabaseId) {
+        this.databaseUpdater.setDatabaseId(notionConfig.resolvedDatabaseId);
+      } else {
+        return {
+          success: false,
+          error: "Database ID could not be resolved",
+        };
+      }
+
       await this.databaseUpdater.initialize();
 
       // Fetch content

@@ -7,7 +7,11 @@ This document outlines the external API integrations used by the NotionPageDb Mi
 The system integrates with several external APIs:
 
 1. **Notion API** - For database and content operations
-2. **DeepSeek API** - For AI-powered text reasoning
+2. **AI Service APIs** - For text generation and reasoning:
+   - DeepSeek API
+   - Google Gemini API
+   - Alibaba DashScope API
+   - OpenAI API (optional)
 3. **Image Generation API** - For AI-powered image creation
 4. **Cloudflare R2 API** - For cloud storage
 
@@ -83,66 +87,228 @@ export class NotionService implements INotionDatabase {
 }
 ```
 
-## DeepSeek API
+## AI Service APIs
 
-### Purpose
+The system supports multiple AI providers through a unified interface, allowing for flexibility and fallback options.
+
+### DeepSeek API
+
+#### Purpose
 
 The DeepSeek API is used for:
 
-- Generating content summaries
-- Estimating reading time
-- Extracting key information from content
+- Primary text reasoning and generation
+- Content summarization and analysis
+- Metadata extraction
 
-### Integration Details
+#### Integration Details
 
 **API Version**: Latest available
 
 **Authentication**:
 
 - API key authentication
-- Headers: `Authorization: Bearer {api_key}`
+- Environment variable: `DEEPSEEK_API_KEY`
 
-**Models Used**:
-
-- `deepseek-r1-chat` - For conversational reasoning
-- `deepseek-coder` - For code extraction (if needed)
-
-**Endpoints Used**:
-
-- `/v1/chat/completions` - For generating content and summaries
-
-**Implementation using Vercel AI SDK**:
+**Implementation**:
 
 ```typescript
-import { DeepSeek } from "@ai-sdk/deepseek";
+import axios from "axios";
 
-export class DeepSeekService implements IAITextService {
-  private client: DeepSeek;
+export class DeepSeekProvider implements AIProvider {
+  private apiKey: string;
 
   constructor(apiKey: string) {
-    this.client = new DeepSeek({
-      apiKey,
-      options: {
-        temperature: 0.3,
-        maxTokens: 500,
-      },
-    });
+    this.apiKey = apiKey;
   }
 
-  async generateSummary(
-    content: string,
-    options?: SummaryOptions
+  async generateText(
+    prompt: string,
+    options?: GenerationOptions
   ): Promise<string> {
-    const prompt = this.createSummaryPrompt(content, options);
-    const response = await this.client.complete({
-      messages: [{ role: "user", content: prompt }],
-      model: "deepseek-r1-chat",
-    });
+    const response = await axios.post(
+      "https://api.deepseek.com/v1/chat/completions",
+      {
+        model: options?.model || "deepseek-chat",
+        messages: [{ role: "user", content: prompt }],
+        temperature: options?.temperature || 0.7,
+        max_tokens: options?.maxTokens || 1000,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-    return response.content;
+    return response.data.choices[0].message.content;
   }
 
   // ... other methods
+}
+```
+
+### Google Gemini API
+
+#### Purpose
+
+The Gemini API is used for:
+
+- Specialized reasoning tasks
+- Alternative text generation
+- Fallback for DeepSeek
+
+#### Integration Details
+
+**API Version**: Latest available
+
+**Authentication**:
+
+- API key authentication
+- Environment variable: `GEMINI_API_KEY`
+
+**Implementation**:
+
+```typescript
+import axios from "axios";
+
+export class GeminiProvider implements AIProvider {
+  private apiKey: string;
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
+
+  async generateText(
+    prompt: string,
+    options?: GenerationOptions
+  ): Promise<string> {
+    const response = await axios.post(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${this.apiKey}`,
+      {
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: options?.temperature || 0.7,
+          maxOutputTokens: options?.maxTokens || 1000,
+        },
+      }
+    );
+
+    return response.data.candidates[0].content.parts[0].text;
+  }
+
+  // ... other methods
+}
+```
+
+### Alibaba DashScope API
+
+#### Purpose
+
+The DashScope API is used for:
+
+- Specialized content generation
+- Alternative text reasoning
+- Additional fallback option
+
+#### Integration Details
+
+**API Version**: Latest available
+
+**Authentication**:
+
+- API key authentication
+- Environment variable: `DASHSCOPE_API_KEY`
+
+**Implementation**:
+
+```typescript
+import axios from "axios";
+
+export class DashScopeProvider implements AIProvider {
+  private apiKey: string;
+
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
+
+  async generateText(
+    prompt: string,
+    options?: GenerationOptions
+  ): Promise<string> {
+    const response = await axios.post(
+      "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+      {
+        model: options?.model || "qwen-max",
+        input: {
+          prompt: prompt,
+        },
+        parameters: {
+          temperature: options?.temperature || 0.7,
+          max_tokens: options?.maxTokens || 1000,
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    return response.data.output.text;
+  }
+
+  // ... other methods
+}
+```
+
+### AI Service Factory
+
+The system uses a factory pattern to create and manage AI providers:
+
+```typescript
+export class AIServiceFactory {
+  private providers: Record<string, AIProvider> = {};
+
+  constructor(config: AIConfigOptions) {
+    if (config.deepseek?.apiKey) {
+      this.providers.deepseek = new DeepSeekProvider(config.deepseek.apiKey);
+    }
+
+    if (config.gemini?.apiKey) {
+      this.providers.gemini = new GeminiProvider(config.gemini.apiKey);
+    }
+
+    if (config.dashscope?.apiKey) {
+      this.providers.dashscope = new DashScopeProvider(config.dashscope.apiKey);
+    }
+
+    if (config.openai?.apiKey) {
+      this.providers.openai = new OpenAIProvider(config.openai.apiKey);
+    }
+  }
+
+  getProvider(name?: string): AIProvider {
+    if (name && this.providers[name]) {
+      return this.providers[name];
+    }
+
+    // Default provider logic
+    const defaultProvider = process.env.AI_PROVIDER || "deepseek";
+    if (this.providers[defaultProvider]) {
+      return this.providers[defaultProvider];
+    }
+
+    // Fallback to any available provider
+    const availableProviders = Object.keys(this.providers);
+    if (availableProviders.length > 0) {
+      return this.providers[availableProviders[0]];
+    }
+
+    throw new Error("No AI provider available");
+  }
 }
 ```
 

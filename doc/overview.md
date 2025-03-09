@@ -18,6 +18,7 @@ This document serves as the main index for the NotionPageDb Migration System doc
 - [API Integration](./api-integration.md) - Details on external API integrations
 - [Configuration Guide](./configuration.md) - Environment and configuration management
 - [Developer Guide](./developer-guide.md) - Guide for developers working on the system
+- [Testing Guide](./testing-guide.md) - Unit testing approach and best practices
 
 ## Project Goals
 

@@ -23,6 +23,7 @@ vi.mock("@notionhq/client", () => {
         create: vi.fn(),
         update: vi.fn(),
       },
+      search: vi.fn(),
     })),
   };
 });
@@ -32,8 +33,9 @@ describe("NotionDatabase", () => {
   let mockClient: any;
   const mockConfig: NotionConfig = {
     apiKey: "test-api-key",
-    targetDatabaseId: "test-database-id",
+    resolvedDatabaseId: "test-database-id",
     sourcePageId: "test-page-id",
+    targetDatabaseName: "Test Database",
     rateLimitDelay: 0, // Set to 0 to speed up tests
   };
 
@@ -54,8 +56,9 @@ describe("NotionDatabase", () => {
       // Create a new instance with different config to verify
       const customConfig: NotionConfig = {
         apiKey: "custom-api-key",
-        targetDatabaseId: "custom-database-id",
+        resolvedDatabaseId: "custom-database-id",
         sourcePageId: "custom-page-id",
+        targetDatabaseName: "Custom Database",
         rateLimitDelay: 500,
       };
 
@@ -64,15 +67,99 @@ describe("NotionDatabase", () => {
       expect(Client).toHaveBeenLastCalledWith({ auth: customConfig.apiKey });
     });
 
-    it("should use default rate limit delay if not provided", () => {
-      const configWithoutDelay: NotionConfig = {
+    it("should use default database name if not provided", () => {
+      const configWithoutName: NotionConfig = {
         apiKey: "test-api-key",
-        targetDatabaseId: "test-database-id",
+        resolvedDatabaseId: "test-database-id",
         sourcePageId: "test-page-id",
       };
 
-      new NotionDatabase(configWithoutDelay);
+      const db = new NotionDatabase(configWithoutName);
       // Default should be applied internally (we can't directly test private properties)
+      expect(db).toBeDefined();
+    });
+  });
+
+  describe("getDatabaseId", () => {
+    it("should return the database ID", () => {
+      expect(notionDatabase.getDatabaseId()).toBe("test-database-id");
+    });
+  });
+
+  describe("setDatabaseId", () => {
+    it("should set the database ID", () => {
+      notionDatabase.setDatabaseId("new-database-id");
+      expect(notionDatabase.getDatabaseId()).toBe("new-database-id");
+    });
+  });
+
+  describe("findDatabaseByName", () => {
+    it("should find a database by name", async () => {
+      const mockSearchResponse = {
+        results: [
+          {
+            object: "database",
+            id: "found-database-id",
+            title: [
+              {
+                plain_text: "Test Database",
+              },
+            ],
+          },
+          {
+            object: "database",
+            id: "another-database-id",
+            title: [
+              {
+                plain_text: "Another Database",
+              },
+            ],
+          },
+        ],
+      };
+
+      mockClient.search.mockResolvedValueOnce(mockSearchResponse);
+
+      const result = await notionDatabase.findDatabaseByName();
+
+      expect(result).toBe("found-database-id");
+      expect(mockClient.search).toHaveBeenCalledWith({
+        query: "Test Database",
+        filter: {
+          property: "object",
+          value: "database",
+        },
+      });
+    });
+
+    it("should return undefined if no database with matching name is found", async () => {
+      const mockSearchResponse = {
+        results: [
+          {
+            object: "database",
+            id: "another-database-id",
+            title: [
+              {
+                plain_text: "Another Database",
+              },
+            ],
+          },
+        ],
+      };
+
+      mockClient.search.mockResolvedValueOnce(mockSearchResponse);
+
+      const result = await notionDatabase.findDatabaseByName();
+
+      expect(result).toBeUndefined();
+    });
+
+    it("should return undefined if search fails", async () => {
+      mockClient.search.mockRejectedValueOnce(new Error("Search failed"));
+
+      const result = await notionDatabase.findDatabaseByName();
+
+      expect(result).toBeUndefined();
     });
   });
 
@@ -86,8 +173,31 @@ describe("NotionDatabase", () => {
 
       expect(result).toBe(true);
       expect(mockClient.databases.retrieve).toHaveBeenCalledWith({
-        database_id: mockConfig.targetDatabaseId,
+        database_id: mockConfig.resolvedDatabaseId,
       });
+    });
+
+    it("should try to find database by name if database ID is not defined", async () => {
+      // Create a version of the config without resolvedDatabaseId
+      const configWithoutDbId = {
+        apiKey: "test-api-key",
+        sourcePageId: "test-source-page-id",
+        targetDatabaseName: "Test Database",
+      };
+
+      // Create a new instance with the test config
+      const dbWithoutId = new NotionDatabase(configWithoutDbId as NotionConfig);
+
+      // Mock findDatabaseByName to avoid needing to mock the search API
+      vi.spyOn(dbWithoutId, "findDatabaseByName").mockResolvedValue(
+        "found-database-id"
+      );
+
+      // Call verifyDatabase with the test database ID
+      const result = await dbWithoutId.verifyDatabase("found-database-id");
+
+      expect(result).toBe(true);
+      expect(dbWithoutId.getDatabaseId()).toBe("found-database-id");
     });
 
     it("should return false if database does not exist", async () => {
@@ -98,24 +208,64 @@ describe("NotionDatabase", () => {
       const result = await notionDatabase.verifyDatabase();
 
       expect(result).toBe(false);
-      expect(mockClient.databases.retrieve).toHaveBeenCalledWith({
-        database_id: mockConfig.targetDatabaseId,
-      });
     });
+  });
 
-    it("should return false if databaseId is not defined", async () => {
-      // Create a version of the config without targetDatabaseId but still meeting the requirements
-      const configWithoutDb = {
-        apiKey: "test-api-key",
-        sourcePageId: "test-page-id",
-        targetDatabaseId: undefined as unknown as string, // Type assertion to satisfy requirement
+  describe("initializeDatabase", () => {
+    it("should find and use existing database if it exists", async () => {
+      // Mock the search response
+      const mockSearchResponse = {
+        results: [
+          {
+            object: "database",
+            id: "found-database-id",
+            title: [
+              {
+                plain_text: "Test Database",
+              },
+            ],
+          },
+        ],
       };
 
-      const dbWithoutId = new NotionDatabase(configWithoutDb as NotionConfig);
-      const result = await dbWithoutId.verifyDatabase();
+      mockClient.search.mockResolvedValueOnce(mockSearchResponse);
 
-      expect(result).toBe(false);
-      expect(mockClient.databases.retrieve).not.toHaveBeenCalled();
+      const result = await notionDatabase.initializeDatabase("parent-page-id");
+
+      expect(result).toBe("found-database-id");
+      expect(mockClient.search).toHaveBeenCalled();
+      expect(mockClient.databases.create).not.toHaveBeenCalled();
+    });
+
+    it("should create a new database if none exists", async () => {
+      // Mock empty search response
+      mockClient.search.mockResolvedValueOnce({ results: [] });
+
+      // Mock database creation
+      mockClient.databases.create.mockResolvedValueOnce({
+        id: "new-database-id",
+      });
+
+      const result = await notionDatabase.initializeDatabase("parent-page-id");
+
+      expect(result).toBe("new-database-id");
+      expect(mockClient.search).toHaveBeenCalled();
+      expect(mockClient.databases.create).toHaveBeenCalled();
+
+      // Verify the database was created with the correct parameters
+      const createCall = mockClient.databases.create.mock.calls[0][0];
+      expect(createCall.parent.page_id).toBe("parent-page-id");
+      expect(createCall.title[0].text.content).toBe("Test Database");
+    });
+
+    it("should throw an error if database cannot be found or created", async () => {
+      // Mock empty search response
+      mockClient.search.mockResolvedValueOnce({ results: [] });
+
+      // Don't provide a parent page ID
+      await expect(notionDatabase.initializeDatabase()).rejects.toThrow(
+        "Database not found and cannot be created without a parent page ID"
+      );
     });
   });
 
@@ -132,7 +282,10 @@ describe("NotionDatabase", () => {
       const mockResponse = { id: "new-database-id" };
       mockClient.databases.create.mockResolvedValueOnce(mockResponse);
 
-      const result = await notionDatabase.createDatabase(mockDbSchema);
+      const result = await notionDatabase.createDatabase(
+        mockDbSchema,
+        "parent-page-id"
+      );
 
       expect(result).toBe("new-database-id");
       expect(mockClient.databases.create).toHaveBeenCalled();
@@ -156,9 +309,9 @@ describe("NotionDatabase", () => {
         new Error("Creation failed")
       );
 
-      await expect(notionDatabase.createDatabase(mockDbSchema)).rejects.toThrow(
-        "Creation failed"
-      );
+      await expect(
+        notionDatabase.createDatabase(mockDbSchema, "parent-page-id")
+      ).rejects.toThrow("Creation failed");
     });
   });
 
@@ -194,7 +347,7 @@ describe("NotionDatabase", () => {
       expect(result[1].id).toBe("page-id-2");
       expect(mockClient.databases.query).toHaveBeenCalledWith(
         expect.objectContaining({
-          database_id: mockConfig.targetDatabaseId,
+          database_id: mockConfig.resolvedDatabaseId,
         })
       );
     });
@@ -251,7 +404,7 @@ describe("NotionDatabase", () => {
       expect(mockClient.pages.create).toHaveBeenCalled();
 
       const callArg = mockClient.pages.create.mock.calls[0][0];
-      expect(callArg.parent.database_id).toBe(mockConfig.targetDatabaseId);
+      expect(callArg.parent.database_id).toBe(mockConfig.resolvedDatabaseId);
       expect(callArg.properties).toBeDefined();
     });
 

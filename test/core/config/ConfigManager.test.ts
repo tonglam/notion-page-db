@@ -106,7 +106,8 @@ describe("ConfigManager", () => {
 
       expect(notionConfig.apiKey).toBe("test-notion-api-key");
       expect(notionConfig.sourcePageId).toBe("test-source-page-id");
-      expect(notionConfig.targetDatabaseId).toBe("test-database-id");
+      expect(notionConfig.targetDatabaseName).toBe("Content Database");
+      expect(notionConfig.resolvedDatabaseId).toBe("test-database-id");
 
       expect(aiConfig.provider).toBe("deepseek");
       expect(aiConfig.apiKey).toBe("test-ai-api-key");
@@ -177,7 +178,8 @@ describe("ConfigManager", () => {
       const notionConfig = configManager.getNotionConfig();
       expect(notionConfig.apiKey).toBe("test-notion-api-key");
       expect(notionConfig.sourcePageId).toBe("test-source-page-id");
-      expect(notionConfig.targetDatabaseId).toBe("test-database-id");
+      expect(notionConfig.targetDatabaseName).toBe("Content Database");
+      expect(notionConfig.resolvedDatabaseId).toBe("test-database-id");
     });
 
     it("should skip file config loading when file doesn't exist", () => {

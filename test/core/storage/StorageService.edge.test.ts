@@ -39,10 +39,8 @@ vi.mock("fs-extra", () => ({
 
 // Mock path
 vi.mock("path", () => ({
-  basename: vi
-    .fn()
-    .mockImplementation((filePath) => filePath.split("/").pop() || ""),
-  extname: vi.fn().mockImplementation((filePath) => ".jpg"),
+  basename: vi.fn().mockImplementation((path) => path.split("/").pop() || ""),
+  extname: vi.fn().mockImplementation(() => ".jpg"),
   join: vi.fn().mockImplementation((...args) => args.join("/")),
 }));
 

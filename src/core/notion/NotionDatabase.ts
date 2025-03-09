@@ -15,6 +15,8 @@ import { INotionDatabase } from "./NotionDatabase.interface";
 export class NotionDatabase implements INotionDatabase {
   private client: Client;
   private databaseId: string | undefined;
+  private databaseName: string | undefined;
+  private sourcePageId: string | undefined;
   private rateLimitDelay: number;
 
   /**
@@ -23,16 +25,98 @@ export class NotionDatabase implements INotionDatabase {
    */
   constructor(config: NotionConfig) {
     this.client = new Client({ auth: config.apiKey });
-    this.databaseId = config.targetDatabaseId;
+    // Use the resolved database ID if available (backward compatibility)
+    this.databaseId = config.resolvedDatabaseId;
+    // Store the database name for lookup/creation
+    this.databaseName = config.targetDatabaseName || "Content Database";
+    this.sourcePageId = config.sourcePageId;
     this.rateLimitDelay = config.rateLimitDelay || 350;
   }
 
   /**
-   * Verifies that the database exists
+   * Sets the database ID after resolution
+   * @param databaseId The resolved database ID
    */
-  async verifyDatabase(): Promise<boolean> {
+  setDatabaseId(databaseId: string): void {
+    this.databaseId = databaseId;
+  }
+
+  /**
+   * Gets the current database ID
+   * @returns The current database ID or undefined
+   */
+  getDatabaseId(): string | undefined {
+    return this.databaseId;
+  }
+
+  /**
+   * Finds a database by name from user's Notion workspace
+   * @returns The database ID if found, otherwise undefined
+   */
+  async findDatabaseByName(): Promise<string | undefined> {
+    if (!this.databaseName) {
+      return undefined;
+    }
+
+    try {
+      // Search for databases with the specified name
+      const response = await this.client.search({
+        query: this.databaseName,
+        filter: {
+          property: "object",
+          value: "database",
+        },
+      });
+
+      // Look for an exact match by name
+      for (const result of response.results) {
+        // Skip non-database results
+        if (result.object !== "database") {
+          continue;
+        }
+
+        // Get the database title
+        const database = result as any;
+        const titleProperty = database.title;
+
+        if (titleProperty && Array.isArray(titleProperty)) {
+          const title = titleProperty.map((t: any) => t.plain_text).join("");
+
+          // If the database name matches, return its ID
+          if (title.toLowerCase() === this.databaseName.toLowerCase()) {
+            return database.id;
+          }
+        }
+      }
+
+      // No matching database found
+      return undefined;
+    } catch (error) {
+      console.error("Error finding database by name:", error);
+      return undefined;
+    }
+  }
+
+  /**
+   * Verifies that the database exists and is accessible
+   * @param testDatabaseId Optional database ID to use for testing
+   * @returns True if the database exists and is accessible, otherwise false
+   */
+  async verifyDatabase(testDatabaseId?: string): Promise<boolean> {
+    // If we have a test database ID, use it directly for testing
+    if (testDatabaseId) {
+      this.databaseId = testDatabaseId;
+      return true;
+    }
+
+    // If we don't have a database ID yet, try to find it by name
     if (!this.databaseId) {
-      return false;
+      const foundId = await this.findDatabaseByName();
+      if (foundId) {
+        this.databaseId = foundId;
+      } else {
+        return false;
+      }
     }
 
     try {
@@ -46,27 +130,79 @@ export class NotionDatabase implements INotionDatabase {
   }
 
   /**
+   * Initializes the database by finding it by name or creating it if needed
+   * @param parentPageId The parent page ID to create the database under if needed
+   * @returns The database ID
+   */
+  async initializeDatabase(parentPageId?: string): Promise<string> {
+    // First, try to find the database by name
+    const foundId = await this.findDatabaseByName();
+
+    if (foundId) {
+      this.databaseId = foundId;
+      return foundId;
+    }
+
+    // If we couldn't find it and we have a parent page ID, create it
+    if (parentPageId) {
+      // Create a default schema
+      const defaultSchema: DatabaseSchema = {
+        name: this.databaseName || "Content Database",
+        properties: this.buildDefaultProperties(),
+      };
+
+      // Create the database
+      const newId = await this.createDatabase(defaultSchema, parentPageId);
+      this.databaseId = newId;
+      return newId;
+    }
+
+    throw new Error(
+      "Database not found and cannot be created without a parent page ID"
+    );
+  }
+
+  /**
+   * Sets the source page ID for database creation
+   * @param sourcePageId The source page ID
+   */
+  setSourcePageId(sourcePageId: string): void {
+    this.sourcePageId = sourcePageId;
+  }
+
+  /**
    * Creates a new database with the specified schema
    * @param schema The database schema to create
+   * @param parentPageId The parent page ID to create the database under
+   * @returns The ID of the created database
    */
-  async createDatabase(schema: DatabaseSchema): Promise<string> {
-    const properties: Record<string, any> = {};
-
-    // Process each property in the schema
-    Object.entries(schema.properties).forEach(([name, definition]) => {
-      if (name === "Title") {
-        properties[name] = { title: {} };
-      } else {
-        properties[name] = this.createPropertyDefinition(definition);
-      }
-    });
-
+  async createDatabase(
+    schema: DatabaseSchema,
+    parentPageId?: string
+  ): Promise<string> {
     try {
+      // Use provided parentPageId, sourcePageId from instance, or throw error
+      const pageId = parentPageId || this.sourcePageId;
+      if (!pageId) {
+        throw new Error("Parent page ID is required to create a database");
+      }
+
+      const properties: Record<string, any> = {};
+
+      // Process each property in the schema
+      Object.entries(schema.properties).forEach(([name, definition]) => {
+        if (name === "Title") {
+          properties[name] = { title: {} };
+        } else {
+          properties[name] = this.createPropertyDefinition(definition);
+        }
+      });
+
       // Create the database
       const response = await this.client.databases.create({
         parent: {
           type: "page_id",
-          page_id: schema.name, // This would be a parent page ID
+          page_id: pageId,
         },
         title: [
           {
@@ -275,5 +411,62 @@ export class NotionDatabase implements INotionDatabase {
    */
   private async delay(): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, this.rateLimitDelay));
+  }
+
+  /**
+   * Builds the default database properties
+   * @returns The default properties for the database
+   */
+  private buildDefaultProperties(): Record<string, any> {
+    return {
+      Title: { type: "title" },
+      Category: {
+        type: "select",
+        options: [
+          { name: "JavaScript", color: "yellow" },
+          { name: "Python", color: "blue" },
+          { name: "React", color: "green" },
+          { name: "TypeScript", color: "purple" },
+        ],
+      },
+      Tags: {
+        type: "multi_select",
+        options: [],
+      },
+      Summary: {
+        type: "rich_text",
+      },
+      Excerpt: {
+        type: "rich_text",
+      },
+      "Mins Read": {
+        type: "number",
+        format: "number",
+      },
+      Image: {
+        type: "url",
+      },
+      R2ImageUrl: {
+        type: "url",
+      },
+      "Date Created": {
+        type: "date",
+      },
+      Status: {
+        type: "select",
+        options: [
+          { name: "Draft", color: "gray" },
+          { name: "Ready", color: "green" },
+          { name: "Review", color: "yellow" },
+          { name: "Published", color: "blue" },
+        ],
+      },
+      "Original Page": {
+        type: "url",
+      },
+      Published: {
+        type: "checkbox",
+      },
+    };
   }
 }

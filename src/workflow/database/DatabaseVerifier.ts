@@ -38,12 +38,16 @@ export class DatabaseVerifier {
 
   /**
    * Verifies that the database meets requirements
-   * @param databaseId ID of the database to verify
+   * @param databaseId Optional ID of the database to verify, if not provided will try to resolve from config
    */
-  async verifyDatabase(databaseId: string): Promise<VerificationResult> {
+  async verifyDatabase(databaseId?: string): Promise<VerificationResult> {
     try {
+      // If a specific database ID is provided, use it
+      if (databaseId) {
+        this.notionDatabase.setDatabaseId(databaseId);
+      }
+
       // Check if the database exists
-      // Note: Our interface doesn't accept parameters, but we'll update later
       const dbExists = await this.notionDatabase.verifyDatabase();
 
       if (!dbExists) {
@@ -53,14 +57,24 @@ export class DatabaseVerifier {
         };
       }
 
+      // Get the final databaseId
+      const finalDatabaseId = this.notionDatabase.getDatabaseId();
+
+      if (!finalDatabaseId) {
+        return {
+          success: false,
+          errors: ["Database ID could not be resolved"],
+        };
+      }
+
       // Since we can't access the database schema directly from the API yet,
       // we'll need to skip the schema validation for now
       console.warn("Database schema validation is limited - API access needed");
 
-      // Return success for now
+      // Return success with the resolved database ID
       return {
         success: true,
-        databaseId,
+        databaseId: finalDatabaseId,
         message: "Database verified (with limited schema validation)",
       };
     } catch (error) {
@@ -74,57 +88,33 @@ export class DatabaseVerifier {
 
   /**
    * Creates a database with the required schema if it doesn't exist
-   * @param databaseId Optional database ID to check/create
    * @param parentPageId Parent page ID where the database should be created
    */
   async createDatabaseIfNeeded(
-    databaseId?: string,
-    parentPageId?: string
+    parentPageId: string
   ): Promise<VerificationResult> {
     try {
-      // If no database ID is provided, create a new one
-      if (!databaseId) {
-        // Verify parent page ID is provided
-        if (!parentPageId) {
-          return {
-            success: false,
-            errors: ["Parent page ID is required to create a new database"],
-          };
-        }
+      // Try to initialize the database - this will find or create it
+      const databaseId =
+        await this.notionDatabase.initializeDatabase(parentPageId);
 
-        // Create the database schema
-        const schema = this.buildDatabaseSchema();
-
-        // Create the database - this needs proper data structure for NotionDatabase.createDatabase
-        const dbData = {
-          title: "Content Database", // This will be properly formatted in NotionDatabase
-          properties: schema,
-        };
-
-        // Note: This is a placeholder, we'll need to fix NotionDatabase.createDatabase
-        const databaseId = await this.notionDatabase.createDatabase(
-          dbData as any
-        );
-
-        return {
-          success: true,
-          databaseId,
-          message: `Created new database with ID ${databaseId}`,
-        };
-      }
-
-      // Otherwise, verify the existing database
+      // Verify the database (either existing or newly created)
       const verificationResult = await this.verifyDatabase(databaseId);
 
       if (verificationResult.success) {
+        // Update the notionConfig with the resolved ID
+        if (this.notionConfig && verificationResult.databaseId) {
+          this.notionConfig.resolvedDatabaseId = verificationResult.databaseId;
+        }
+
         return {
           success: true,
-          databaseId,
+          databaseId: verificationResult.databaseId,
           message: "Database verified successfully",
         };
       }
 
-      // If the database exists but has issues, report them
+      // If verification failed, return the error
       return verificationResult;
     } catch (error) {
       console.error("Error creating/verifying database:", error);
