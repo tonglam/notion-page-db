@@ -1,10 +1,12 @@
 # Configuration Guide
 
-This document provides a comprehensive guide for configuring the NotionPageDb Migration System. It covers environment variables, configuration files, and runtime options.
+This document provides a comprehensive guide for configuring the NotionPageDb Migration System. It covers environment variables and runtime options.
 
 ## Environment Variables
 
-The system uses environment variables for most configuration. These can be set in a `.env` file in the project root or through your system's environment.
+The system uses environment variables as the primary and only configuration method. These can be set in a `.env` file in the project root or through your system's environment.
+
+> **Note**: The documentation previously mentioned JSON configuration files like `database-schema.json`, but these are not actually implemented in the current version. All configuration is done via environment variables.
 
 ## Security Warning
 
@@ -12,7 +14,7 @@ The system uses environment variables for most configuration. These can be set i
 
 1. **Never commit real API keys to version control**
 2. **Do not include actual credentials in documentation**
-3. **Keep your `.env` file in `.gitignore**
+3. **Keep your `.env` file in `.gitignore`**
 4. **Regularly rotate your API keys**
 5. **Use restricted API keys with minimal permissions**
 
@@ -112,103 +114,6 @@ R2_REGION=auto
 R2_USE_PRESIGNED_URLS=false
 ```
 
-## Configuration Files
-
-In addition to environment variables, certain aspects of the system can be configured through JSON files.
-
-### Database Schema Configuration
-
-The database schema can be customized through a schema configuration file:
-
-**File Path**: `config/database-schema.json`
-
-**Example**:
-
-```json
-{
-  "properties": {
-    "Category": {
-      "type": "select",
-      "options": [
-        { "name": "JavaScript", "color": "yellow" },
-        { "name": "Python", "color": "blue" },
-        { "name": "React", "color": "green" },
-        { "name": "TypeScript", "color": "purple" }
-      ]
-    },
-    "Status": {
-      "type": "select",
-      "options": [
-        { "name": "Draft", "color": "gray" },
-        { "name": "Ready", "color": "green" },
-        { "name": "Review", "color": "yellow" },
-        { "name": "Published", "color": "blue" }
-      ]
-    },
-    "Published": {
-      "type": "checkbox",
-      "description": "Whether the content is published"
-    }
-  }
-}
-```
-
-### AI Prompts Configuration
-
-AI prompts can be customized through a prompts configuration file:
-
-**File Path**: `config/ai-prompts.json`
-
-**Example**:
-
-```json
-{
-  "summary": {
-    "template": "Generate a concise summary (2-3 sentences) for the following technical content:\n\n{{content}}\n\nSummary:",
-    "maxTokens": 100,
-    "temperature": 0.3
-  },
-  "readingTime": {
-    "template": "Estimate the reading time in minutes for the following content. Return only a number:\n\n{{content}}\n\nReading time (minutes):",
-    "maxTokens": 10,
-    "temperature": 0.1
-  },
-  "imagePrompt": {
-    "template": "Create a vivid, conceptual image for an article titled '{{title}}' about {{summary}}. The image should represent the technical concept in a clear, memorable way.",
-    "maxTokens": 100,
-    "temperature": 0.7
-  }
-}
-```
-
-### Category Mapping Configuration
-
-Custom category mapping can be configured through a mapping file:
-
-**File Path**: `config/category-mapping.json`
-
-**Example**:
-
-```json
-{
-  "mappings": [
-    {
-      "source": "JavaScript",
-      "target": "Web Development",
-      "prefix": "",
-      "applyToChildren": true
-    },
-    {
-      "source": "MIT Units",
-      "pattern": ".*",
-      "prefix": "CITS",
-      "exclude": ["Overview", "Introduction"]
-    }
-  ],
-  "defaultCategory": "Uncategorized"
-}
-```
-
 ## Command-Line Options
 
 The application supports various command-line options for controlling execution:
@@ -222,10 +127,8 @@ The application supports various command-line options for controlling execution:
 | `--skip-summaries`    | Skip summary generation            | `false`             |
 | `--force-update`      | Force update existing entries      | `false`             |
 | `--dry-run`           | Simulate execution without changes | `false`             |
-| `--config <path>`     | Path to custom config file         | Default paths       |
 | `--verbose`           | Enable verbose logging             | `false`             |
 | `--reset-pending`     | Reset pending operations           | `false`             |
-| `--clean-mapping`     | Clean mapping file                 | `false`             |
 | `--batch-size <n>`    | Set batch size                     | From env or default |
 | `--delay <ms>`        | Set delay between operations       | From env or default |
 
@@ -243,9 +146,6 @@ npm run start -- --batch-size 3 --delay 500
 
 # Skip image generation and force update
 npm run start -- --skip-images --force-update
-
-# Run with custom config file
-npm run start -- --config ./custom-config.json
 ```
 
 ## Runtime Configuration
@@ -316,7 +216,6 @@ The system validates all configuration on startup:
 
 4. **Maintenance**:
    - Document custom configurations
-   - Use version control for configuration files
    - Keep a backup of working configurations
 
 ## Troubleshooting

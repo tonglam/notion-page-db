@@ -9,14 +9,14 @@ A TypeScript-based system for migrating content from Notion pages to a structure
 - **Database Management**: Create or update entries in a Notion database
 - **Image Processing**: Download, generate, and store images
 - **Cloudflare R2 Storage**: Store and serve images using Cloudflare's S3-compatible storage
-- **Configurable**: Customize the migration process via configuration files or environment variables
+- **Configurable**: Customize the migration process through environment variables
 
 ## Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/notionpagedb.git
-cd notionpagedb
+git clone https://github.com/tonglam/notion-page-db.git
+cd notion-page-db
 
 # Install dependencies
 npm install
@@ -27,7 +27,7 @@ npm run build
 
 ## Configuration
 
-You can configure the system using environment variables or a configuration file.
+The system is configured using environment variables through a `.env` file.
 
 ### Environment Variables
 
@@ -37,35 +37,7 @@ Copy the `.env.example` file to `.env` and fill in your values:
 cp .env.example .env
 ```
 
-### Configuration File
-
-Alternatively, you can create a JSON configuration file:
-
-```json
-{
-  "notion": {
-    "apiKey": "your-notion-api-key",
-    "sourcePageId": "your-source-page-id",
-    "targetDatabaseId": "your-target-database-id",
-    "rateLimitDelay": 350
-  },
-  "ai": {
-    "provider": "openai",
-    "apiKey": "your-openai-api-key",
-    "model": "gpt-3.5-turbo",
-    "imageModel": "dall-e-3"
-  },
-  "storage": {
-    "provider": "r2",
-    "accessKeyId": "your-r2-access-key-id",
-    "secretAccessKey": "your-r2-secret-access-key",
-    "accountId": "your-r2-account-id",
-    "bucketName": "your-r2-bucket-name",
-    "baseUrl": "your-r2-public-url",
-    "region": "auto"
-  }
-}
-```
+> See the [Configuration Guide](./doc/configuration.md) for a comprehensive list of all supported environment variables.
 
 ### Cloudflare R2 Setup
 
@@ -85,9 +57,6 @@ This project uses Cloudflare R2 for storing and serving images. To set up R2:
 ```bash
 # Run with default options
 npm start
-
-# Run with a custom configuration file
-npm start -- --config ./config/custom.json
 
 # Disable content enhancement
 npm start -- --no-enhance
@@ -110,11 +79,8 @@ import { migrate } from "notionpagedb";
 // Run with default options
 await migrate();
 
-// Run with a custom configuration file
-await migrate("./config/custom.json");
-
 // Run with custom options
-await migrate(undefined, {
+await migrate({
   enhanceContent: true,
   processImages: true,
   generateImages: false,

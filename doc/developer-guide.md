@@ -82,13 +82,12 @@ notion-page-db/
 │   ├── types/            # TypeScript type definitions
 │   ├── constants/        # Constants and enums
 │   └── index.ts          # Main entry point
-├── config/               # Configuration files
-├── scripts/              # Utility scripts
-├── tests/                # Test files
+├── test/                 # Test files
 │   ├── unit/             # Unit tests
 │   ├── integration/      # Integration tests
 │   └── fixtures/         # Test fixtures
 ├── doc/                  # Documentation
+├── dist/                 # Compiled output
 ├── .env.example          # Environment variables template
 ├── package.json          # Project metadata and dependencies
 ├── tsconfig.json         # TypeScript configuration
@@ -96,6 +95,21 @@ notion-page-db/
 ```
 
 ## Core Components
+
+### Configuration Management
+
+The system uses environment variables as the only configuration method. Configuration is loaded from environment variables, primarily through the `.env` file.
+
+```typescript
+// Example: Loading configuration from environment variables
+import dotenv from "dotenv";
+dotenv.config();
+
+const configManager = new ConfigManager();
+const notionConfig = configManager.getNotionConfig();
+const aiConfig = configManager.getAIConfig();
+const storageConfig = configManager.getStorageConfig();
+```
 
 ### Dependency Injection
 
