@@ -5,6 +5,7 @@ import { NotionContent } from "../../src/core/notion/NotionContent";
 import { ContentPage } from "../../src/types";
 import { DatabaseUpdater } from "../../src/workflow/database/DatabaseUpdater";
 import { DatabaseVerifier } from "../../src/workflow/database/DatabaseVerifier";
+import { ImageProcessor } from "../../src/workflow/images/ImageProcessor";
 import { MigrationManager } from "../../src/workflow/MigrationManager";
 
 // Load environment variables
@@ -147,8 +148,14 @@ describe("NotionPageDb Integration", () => {
           id: pageId,
           title: "Test Page",
           parentId: "",
-          category: "Test",
-          content: "This is test content for integration testing.",
+          category: "Test Category",
+          content:
+            "This is test content for integration testing. It includes various information that would be processed by the system, including potential keywords, topics, and other relevant content that would trigger the content enhancement process.",
+          summary: "", // Will be filled by enhancement
+          excerpt: "", // May be filled by enhancement
+          tags: ["test", "integration"], // Example tags
+          minsRead: 0, // Will be calculated by enhancement
+          imageUrl: "", // May be filled by image processing
           createdTime: new Date().toISOString(),
           lastEditedTime: new Date().toISOString(),
         };
@@ -202,15 +209,33 @@ describe("NotionPageDb Integration", () => {
           minsRead: readingTime,
         };
 
-        // Store for later tests
-        testState.processedPage = enhancedPage;
-
         // Verify the results
         expect(enhancedPage.summary).toBeDefined();
         expect(enhancedPage.minsRead).toBeGreaterThan(0);
-        console.log(
-          `Content enhanced: Summary length ${summary.length}, Reading time ${readingTime} mins`
-        );
+
+        // More detailed verification of enhanced fields
+        if (enhancedPage.summary) {
+          expect(enhancedPage.summary.length).toBeGreaterThan(0);
+          console.log(
+            `  - Summary: "${enhancedPage.summary.substring(0, 50)}..."`
+          );
+        }
+
+        if (enhancedPage.excerpt) {
+          expect(enhancedPage.excerpt.length).toBeGreaterThan(0);
+          console.log(
+            `  - Excerpt: "${enhancedPage.excerpt.substring(0, 50)}..."`
+          );
+        }
+
+        console.log(`  - Reading time: ${enhancedPage.minsRead} minutes`);
+
+        if (enhancedPage.tags && enhancedPage.tags.length > 0) {
+          console.log(`  - Tags: ${enhancedPage.tags.join(", ")}`);
+        }
+
+        // Store the enhanced page for later tests
+        testState.processedPage = enhancedPage;
       } catch (error) {
         console.error("Failed to enhance content:", error);
         throw error;
@@ -249,7 +274,73 @@ describe("NotionPageDb Integration", () => {
       // Verify the results
       expect(result.success).toBe(true);
       expect(result.entryId).toBeTruthy(); // Just verify we got back an ID, not necessarily the same one
-      console.log(`Database updated successfully: ${result.entryId}`);
+
+      // Log detailed information about the update
+      console.log(`Database update complete: Entry ID ${result.entryId}`);
+      console.log(`  - Success: ${result.success}`);
+
+      if (result.isNew) {
+        console.log("  - Created new entry: Yes");
+      } else {
+        console.log("  - Updated existing entry: Yes");
+      }
+
+      // If we have more detailed result data, log it
+      if (result.message) {
+        console.log(`  - Message: ${result.message}`);
+      }
+    },
+    TEST_TIMEOUT
+  );
+
+  // Test image processing properly
+  it(
+    "should process images for content",
+    async () => {
+      if (!testState.processedPage || !migrationManager) {
+        console.warn("⚠️ Skipping test: No processed page available");
+        return;
+      }
+
+      // Create image processor
+      const imageProcessor = new ImageProcessor(
+        migrationManager.getAIService(),
+        migrationManager.getStorageService()
+      );
+
+      // Initialize the processor
+      await imageProcessor.initialize();
+
+      console.log(`Processing images for: "${testState.processedPage.title}"`);
+
+      try {
+        // Process images
+        const result = await imageProcessor.processImages(
+          testState.processedPage
+        );
+
+        // Verify results
+        expect(result.success).toBe(true);
+        console.log(`Image processing complete - Success: ${result.success}`);
+
+        // If image URL was generated, store it
+        if (result.imageUrl) {
+          testState.processedPage.imageUrl = result.imageUrl;
+          console.log(`  - Image URL: ${result.imageUrl.substring(0, 50)}...`);
+        }
+
+        if (result.storageUrl) {
+          console.log(
+            `  - Storage URL: ${result.storageUrl.substring(0, 50)}...`
+          );
+        }
+
+        console.log(`  - Is generated: ${result.isGenerated ? "Yes" : "No"}`);
+        console.log(`  - Is new: ${result.isNew ? "Yes" : "No"}`);
+      } catch (error) {
+        console.error("Failed to process images:", error);
+        throw error;
+      }
     },
     TEST_TIMEOUT
   );
