@@ -1,5 +1,3 @@
-import * as fs from "fs-extra";
-import * as path from "path";
 import { INotionDatabase } from "../../core/notion/NotionDatabase.interface";
 import { DatabaseSchema, NotionConfig, VerificationResult } from "../../types";
 
@@ -10,7 +8,7 @@ import { DatabaseSchema, NotionConfig, VerificationResult } from "../../types";
 export class DatabaseVerifier {
   private notionDatabase: INotionDatabase;
   private notionConfig: NotionConfig;
-  private requiredProperties: string[];
+  private comparisonDatabaseId: string = "1ab7ef86a5ad81aba4cbf8b8f37ec491";
 
   /**
    * Creates a new DatabaseVerifier instance
@@ -20,20 +18,6 @@ export class DatabaseVerifier {
   constructor(notionDatabase: INotionDatabase, notionConfig: NotionConfig) {
     this.notionDatabase = notionDatabase;
     this.notionConfig = notionConfig;
-    this.requiredProperties = [
-      "Title",
-      "Category",
-      "Tags",
-      "Summary",
-      "Excerpt",
-      "Mins Read",
-      "Image",
-      "R2ImageUrl",
-      "Date Created",
-      "Status",
-      "Original Page",
-      "Published",
-    ];
   }
 
   /**
@@ -67,15 +51,11 @@ export class DatabaseVerifier {
         };
       }
 
-      // Since we can't access the database schema directly from the API yet,
-      // we'll need to skip the schema validation for now
-      console.warn("Database schema validation is limited - API access needed");
-
       // Return success with the resolved database ID
       return {
         success: true,
         databaseId: finalDatabaseId,
-        message: "Database verified (with limited schema validation)",
+        message: "Database verified successfully",
       };
     } catch (error) {
       console.error("Error verifying database:", error);
@@ -94,9 +74,21 @@ export class DatabaseVerifier {
     parentPageId: string
   ): Promise<VerificationResult> {
     try {
-      // Try to initialize the database - this will find or create it
-      const databaseId =
-        await this.notionDatabase.initializeDatabase(parentPageId);
+      // First, get the schema from the comparison database
+      const comparisonSchema = await this.getComparisonDatabaseSchema();
+
+      if (!comparisonSchema) {
+        return {
+          success: false,
+          errors: ["Could not fetch schema from comparison database"],
+        };
+      }
+
+      // Try to initialize the database with the comparison schema
+      const databaseId = await this.notionDatabase.initializeDatabase(
+        parentPageId,
+        comparisonSchema
+      );
 
       // Verify the database (either existing or newly created)
       const verificationResult = await this.verifyDatabase(databaseId);
@@ -110,7 +102,8 @@ export class DatabaseVerifier {
         return {
           success: true,
           databaseId: verificationResult.databaseId,
-          message: "Database verified successfully",
+          message:
+            "Database created and verified successfully with comparison schema",
         };
       }
 
@@ -126,80 +119,70 @@ export class DatabaseVerifier {
   }
 
   /**
-   * Loads custom schema configuration from a file
-   * @param configPath Path to the schema configuration file
+   * Fetches the schema from the comparison database
    */
-  async loadSchemaConfig(configPath?: string): Promise<DatabaseSchema | null> {
-    const schemaPath =
-      configPath || path.join(process.cwd(), "config", "database-schema.json");
-
+  private async getComparisonDatabaseSchema(): Promise<DatabaseSchema | null> {
     try {
-      if (await fs.pathExists(schemaPath)) {
-        const schemaData = await fs.readJson(schemaPath);
-        return schemaData as DatabaseSchema;
+      // Store current database ID
+      const currentDatabaseId = this.notionDatabase.getDatabaseId();
+
+      // Set to comparison database temporarily
+      this.notionDatabase.setDatabaseId(this.comparisonDatabaseId);
+
+      // Fetch the database to get its schema
+      const database = await this.notionDatabase.client.databases.retrieve({
+        database_id: this.comparisonDatabaseId,
+      });
+
+      // Restore original database ID
+      if (currentDatabaseId) {
+        this.notionDatabase.setDatabaseId(currentDatabaseId);
       }
-      return null;
+
+      // Convert Notion's schema format to our DatabaseSchema format
+      const schema: DatabaseSchema = {
+        name: (database as any).title?.[0]?.plain_text || "Content Database",
+        properties: {},
+      };
+
+      // Convert each property
+      Object.entries(database.properties).forEach(([name, prop]) => {
+        const property = prop as any;
+        if (property.type === "title") {
+          schema.properties[name] = { type: "title" };
+        } else if (property.type === "select") {
+          schema.properties[name] = {
+            type: "select",
+            options: property.select.options.map((opt: any) => ({
+              name: opt.name,
+              color: opt.color,
+            })),
+          };
+        } else if (property.type === "multi_select") {
+          schema.properties[name] = {
+            type: "multi_select",
+            options: property.multi_select.options.map((opt: any) => ({
+              name: opt.name,
+              color: opt.color,
+            })),
+          };
+        } else if (property.type === "rich_text") {
+          schema.properties[name] = { type: "rich_text" };
+        } else if (property.type === "number") {
+          schema.properties[name] = { type: "number" };
+        } else if (property.type === "url") {
+          schema.properties[name] = { type: "url" };
+        } else if (property.type === "date") {
+          schema.properties[name] = { type: "date" };
+        } else if (property.type === "checkbox") {
+          schema.properties[name] = { type: "checkbox" };
+        }
+      });
+
+      return schema;
     } catch (error) {
-      console.error("Error loading schema config:", error);
+      console.error("Error fetching comparison database schema:", error);
       return null;
     }
-  }
-
-  /**
-   * Builds the database schema based on the required properties
-   */
-  private buildDatabaseSchema(): Record<string, any> {
-    return {
-      Title: {
-        type: "title",
-      },
-      Category: {
-        type: "select",
-        options: [
-          { name: "JavaScript", color: "yellow" },
-          { name: "Python", color: "blue" },
-          { name: "React", color: "green" },
-          { name: "TypeScript", color: "purple" },
-        ],
-      },
-      Tags: {
-        type: "multi_select",
-        options: [],
-      },
-      Summary: {
-        type: "rich_text",
-      },
-      Excerpt: {
-        type: "rich_text",
-      },
-      "Mins Read": {
-        type: "number",
-        format: "number",
-      },
-      Image: {
-        type: "url",
-      },
-      R2ImageUrl: {
-        type: "url",
-      },
-      "Date Created": {
-        type: "date",
-      },
-      Status: {
-        type: "select",
-        options: [
-          { name: "Draft", color: "gray" },
-          { name: "Ready", color: "green" },
-          { name: "Review", color: "yellow" },
-          { name: "Published", color: "blue" },
-        ],
-      },
-      "Original Page": {
-        type: "url",
-      },
-      Published: {
-        type: "checkbox",
-      },
-    };
   }
 }

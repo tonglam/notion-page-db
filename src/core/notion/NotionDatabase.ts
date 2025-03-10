@@ -13,11 +13,11 @@ import { INotionDatabase } from "./NotionDatabase.interface";
  * Implementation of the NotionDatabase service
  */
 export class NotionDatabase implements INotionDatabase {
-  private client: Client;
-  private databaseId: string | undefined;
-  private databaseName: string | undefined;
-  private sourcePageId: string | undefined;
-  private rateLimitDelay: number;
+  public client: Client;
+  private databaseId?: string;
+  private databaseName?: string;
+  private sourcePageId?: string;
+  private rateLimitDelay: number = 350; // milliseconds
 
   /**
    * Creates a new NotionDatabase instance
@@ -124,7 +124,7 @@ export class NotionDatabase implements INotionDatabase {
         database_id: this.databaseId,
       });
       return true;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -132,9 +132,13 @@ export class NotionDatabase implements INotionDatabase {
   /**
    * Initializes the database by finding it by name or creating it if needed
    * @param parentPageId The parent page ID to create the database under if needed
+   * @param schema Optional schema to use when creating the database
    * @returns The database ID
    */
-  async initializeDatabase(parentPageId?: string): Promise<string> {
+  async initializeDatabase(
+    parentPageId?: string,
+    schema?: DatabaseSchema
+  ): Promise<string> {
     // First, try to find the database by name
     const foundId = await this.findDatabaseByName();
 
@@ -145,14 +149,14 @@ export class NotionDatabase implements INotionDatabase {
 
     // If we couldn't find it and we have a parent page ID, create it
     if (parentPageId) {
-      // Create a default schema
-      const defaultSchema: DatabaseSchema = {
+      // Use provided schema or create a default one
+      const dbSchema: DatabaseSchema = schema || {
         name: this.databaseName || "Content Database",
         properties: this.buildDefaultProperties(),
       };
 
       // Create the database
-      const newId = await this.createDatabase(defaultSchema, parentPageId);
+      const newId = await this.createDatabase(dbSchema, parentPageId);
       this.databaseId = newId;
       return newId;
     }
@@ -468,5 +472,72 @@ export class NotionDatabase implements INotionDatabase {
         type: "checkbox",
       },
     };
+  }
+
+  /**
+   * Creates or updates an entry in the database based on title
+   * If an entry with the same title exists, it will be updated
+   * @param data The data for the entry
+   * @returns Object containing the entry ID and whether it was created or updated
+   */
+  async upsertEntry(data: EntryData): Promise<{ id: string; isNew: boolean }> {
+    if (!this.databaseId) {
+      throw new Error("Database ID is not set");
+    }
+
+    await this.delay(); // Respect rate limiting
+
+    try {
+      // First, check if an entry with this title exists
+      const title = this.extractTitle(data);
+      if (!title) {
+        throw new Error("Title is required for upsert operation");
+      }
+
+      const existingEntries = await this.queryEntries({
+        filter: {
+          property: "Title",
+          title: {
+            equals: title,
+          },
+        },
+        page_size: 1,
+      });
+
+      // If an entry exists, update it
+      if (existingEntries.length > 0) {
+        const existingEntry = existingEntries[0];
+        await this.updateEntry(existingEntry.id, data);
+        return { id: existingEntry.id, isNew: false };
+      }
+
+      // If no entry exists, create a new one
+      const newId = await this.createEntry(data);
+      return { id: newId, isNew: true };
+    } catch (error) {
+      console.error("Failed to upsert entry:", error);
+      throw new Error(`Failed to upsert entry: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Extracts the title from entry data
+   * @param data The entry data
+   * @returns The title string or undefined
+   */
+  private extractTitle(data: EntryData): string | undefined {
+    // Check if title is in properties
+    if (data.properties?.Title?.title) {
+      const titleContent = data.properties.Title.title[0]?.text?.content;
+      if (titleContent) return titleContent;
+    }
+
+    // Check if title is in the title array
+    if (data.title && Array.isArray(data.title)) {
+      const titleContent = data.title[0]?.text?.content;
+      if (titleContent) return titleContent;
+    }
+
+    return undefined;
   }
 }

@@ -3,7 +3,7 @@ import { ConfigManager } from "../core/config/ConfigManager";
 import { NotionContent } from "../core/notion/NotionContent";
 import { NotionDatabase } from "../core/notion/NotionDatabase";
 import { StorageService } from "../core/storage/StorageService";
-import { MigrationOptions, MigrationResult } from "../types";
+import { ContentPage, MigrationOptions, MigrationResult } from "../types";
 import { ContentProcessor } from "./content/ContentProcessor";
 import { DatabaseUpdater } from "./database/DatabaseUpdater";
 import { DatabaseVerifier } from "./database/DatabaseVerifier";
@@ -132,10 +132,12 @@ export class MigrationManager {
         };
       }
 
+      // Initialize database updater to load existing entries
       await this.databaseUpdater.initialize();
+      console.log("Database updater initialized with existing entries");
 
-      // Fetch content
-      console.log("Fetching content...");
+      // Traverse the source page and fetch all content
+      console.log(`Traversing source page: ${notionConfig.sourcePageId}`);
       const fetchResult = await this.contentProcessor.fetchContent();
 
       if (!fetchResult.success) {
@@ -149,16 +151,101 @@ export class MigrationManager {
         `Fetched ${fetchResult.contentPages?.length} content pages from ${fetchResult.categories?.length} categories`
       );
 
-      // Enhance content
-      console.log("Enhancing content...");
-      const enhancedPages = await this.contentProcessor.enhanceAllContent(
-        options.enhanceContent !== false
+      // Analyze each content page to determine if it needs updating
+      const contentPages = fetchResult.contentPages || [];
+      const pagesToProcess: ContentPage[] = [];
+      const skippedPages: ContentPage[] = [];
+
+      // Check each content page against existing entries
+      for (const contentPage of contentPages) {
+        // Get existing entry by originalPageUrl or by title
+        let existingEntry;
+
+        if (contentPage.originalPageUrl) {
+          existingEntry = this.databaseUpdater.getExistingEntry(
+            contentPage.originalPageUrl
+          );
+        }
+
+        if (!existingEntry) {
+          // Try to find by title - first initialize a temporary ContentPage
+          const tempPage = { ...contentPage };
+          const emptyFields = this.databaseUpdater.getEmptyFields(tempPage);
+
+          // If title exists, try to find by title
+          if (!emptyFields.includes("title")) {
+            // Query database - this is done within updateEntry so we don't need to do it here
+            console.log(
+              `No existing entry found by URL, will check by title: "${contentPage.title}"`
+            );
+            pagesToProcess.push(contentPage);
+            continue;
+          } else {
+            // No title and no URL, can't identify the page
+            console.log(
+              `Page has no title or URL, skipping: ${contentPage.id}`
+            );
+            skippedPages.push(contentPage);
+            continue;
+          }
+        } else {
+          // Check if the existing entry needs updating
+          const fieldsToUpdate = this.databaseUpdater.getFieldsNeedingUpdate(
+            contentPage,
+            existingEntry
+          );
+
+          if (fieldsToUpdate.length > 0) {
+            console.log(
+              `Existing entry needs updating (${fieldsToUpdate.join(", ")}): ${contentPage.title}`
+            );
+            pagesToProcess.push(contentPage);
+          } else {
+            console.log(
+              `Existing entry is up to date, skipping: ${contentPage.title}`
+            );
+            skippedPages.push(contentPage);
+          }
+        }
+      }
+
+      console.log(
+        `Found ${pagesToProcess.length} pages to process, ${skippedPages.length} pages up to date`
       );
+
+      // Process only the pages that need it
+      if (pagesToProcess.length === 0) {
+        return {
+          success: true,
+          totalPages: contentPages.length,
+          updatedPages: 0,
+          failedPages: 0,
+          categories: fetchResult.categories,
+        };
+      }
+
+      // Enhance content for pages that need processing
+      console.log(`Enhancing ${pagesToProcess.length} content pages...`);
+      const enhancedPages = [];
+
+      for (const page of pagesToProcess) {
+        // Store the page in the processor's map before enhancing
+        this.contentProcessor.setContentPage(page.id, page);
+
+        const enhancedPage = await this.contentProcessor.enhanceContent(
+          page.id,
+          options.enhanceContent !== false
+        );
+
+        if (enhancedPage) {
+          enhancedPages.push(enhancedPage);
+        }
+      }
 
       console.log(`Enhanced ${enhancedPages.length} content pages`);
 
       // Process images
-      if (options.processImages !== false) {
+      if (options.processImages !== false && enhancedPages.length > 0) {
         console.log("Processing images...");
         await this.imageProcessor.processAllImages(
           enhancedPages,
@@ -166,27 +253,37 @@ export class MigrationManager {
         );
       }
 
-      // Update database
-      console.log("Updating database...");
-      const updateResults =
-        await this.databaseUpdater.updateEntries(enhancedPages);
+      // Update database with only the pages that need updating
+      if (enhancedPages.length > 0) {
+        console.log("Updating database...");
+        const updateResults =
+          await this.databaseUpdater.updateEntries(enhancedPages);
 
-      const successfulUpdates = updateResults.filter(
-        (result) => result.success
-      );
-      const failedUpdates = updateResults.filter((result) => !result.success);
+        const successfulUpdates = updateResults.filter(
+          (result) => result.success
+        );
+        const failedUpdates = updateResults.filter((result) => !result.success);
 
-      console.log(
-        `Updated ${successfulUpdates.length} entries, ${failedUpdates.length} failed`
-      );
+        console.log(
+          `Updated ${successfulUpdates.length} entries, ${failedUpdates.length} failed`
+        );
 
-      return {
-        success: true,
-        totalPages: enhancedPages.length,
-        updatedPages: successfulUpdates.length,
-        failedPages: failedUpdates.length,
-        categories: fetchResult.categories,
-      };
+        return {
+          success: true,
+          totalPages: contentPages.length,
+          updatedPages: successfulUpdates.length,
+          failedPages: failedUpdates.length,
+          categories: fetchResult.categories,
+        };
+      } else {
+        return {
+          success: true,
+          totalPages: contentPages.length,
+          updatedPages: 0,
+          failedPages: 0,
+          categories: fetchResult.categories,
+        };
+      }
     } catch (error) {
       console.error("Migration failed:", error);
       return {

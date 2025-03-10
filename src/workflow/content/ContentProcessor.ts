@@ -228,4 +228,13 @@ export class ContentProcessor {
   getContentPage(pageId: string): ContentPage | null {
     return this.processedContent.get(pageId) || null;
   }
+
+  /**
+   * Sets a content page in the processor's map
+   * @param pageId ID of the page to set
+   * @param contentPage The content page to store
+   */
+  setContentPage(pageId: string, contentPage: ContentPage): void {
+    this.processedContent.set(pageId, contentPage);
+  }
 }

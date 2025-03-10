@@ -68,7 +68,7 @@ export interface PropertyDefinition {
 
 // Notion Database Types
 export interface QueryFilter {
-  database_id: string;
+  database_id?: string;
   filter?: Record<string, any>;
   sorts?: Array<Record<string, any>>;
   page_size?: number;
@@ -115,6 +115,16 @@ export interface Category {
 }
 
 /**
+ * Valid status values for content pages
+ */
+export enum Status {
+  Draft = "Draft",
+  Ready = "Ready",
+  Review = "Review",
+  Published = "Published",
+}
+
+/**
  * Content page data
  */
 export interface ContentPage {
@@ -128,6 +138,10 @@ export interface ContentPage {
   tags?: string[];
   minsRead?: number;
   imageUrl?: string;
+  r2ImageUrl?: string; // Secondary image URL for R2 storage
+  status?: Status; // Status field (Draft, Ready, Review, Published)
+  published?: boolean; // Whether the entry is published
+  originalPageUrl?: string; // URL to the original Notion page
   createdTime: string;
   lastEditedTime: string;
 }
@@ -154,6 +168,7 @@ export interface ImageResult {
   height?: number;
   localPath?: string;
   prompt?: string;
+  taskId?: string;
   success: boolean;
   error?: string;
 }

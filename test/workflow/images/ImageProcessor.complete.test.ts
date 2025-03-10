@@ -13,14 +13,12 @@ vi.mock("fs-extra", () => ({
   createWriteStream: vi.fn(),
   remove: vi.fn().mockResolvedValue(undefined),
   emptyDir: vi.fn().mockResolvedValue(undefined),
+  pathExists: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock("path", () => ({
   join: vi.fn(),
-  basename: vi.fn().mockImplementation((path) => {
-    const parts = path.split("/");
-    return parts[parts.length - 1];
-  }),
+  basename: vi.fn().mockReturnValue("image.jpg"),
 }));
 
 vi.mock("os", () => ({
@@ -28,6 +26,30 @@ vi.mock("os", () => ({
 }));
 
 vi.mock("axios");
+
+// Mock the ImageTaskTracker
+vi.mock("../../../src/workflow/images/ImageTaskTracker", () => {
+  return {
+    ImageTaskTracker: vi.fn().mockImplementation(() => {
+      return {
+        initialize: vi.fn().mockResolvedValue(undefined),
+        createOrUpdateTask: vi.fn().mockResolvedValue({
+          pageId: "test-page-id",
+          pageTitle: "Test Page",
+          status: "pending",
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          attempts: 0,
+        }),
+        updateTaskWithId: vi.fn().mockResolvedValue(undefined),
+        completeTask: vi.fn().mockResolvedValue(undefined),
+        failTask: vi.fn().mockResolvedValue(undefined),
+        hasCompletedTask: vi.fn().mockResolvedValue(false),
+        getStorageUrl: vi.fn().mockResolvedValue(undefined),
+      };
+    }),
+  };
+});
 
 describe("ImageProcessor Complete Coverage", () => {
   let imageProcessor: ImageProcessor;

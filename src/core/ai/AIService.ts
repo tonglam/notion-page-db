@@ -1,3 +1,5 @@
+import { deepseek } from "@ai-sdk/deepseek";
+import { generateText } from "ai";
 import axios from "axios";
 import * as fs from "fs-extra";
 import * as path from "path";
@@ -9,21 +11,19 @@ import { IAIService } from "./AIService.interface";
  * Handles AI-powered content enhancement and image generation
  */
 export class AIService implements IAIService {
-  private config: AIConfig;
   private dashscopeApiKey: string;
-  private openaiApiKey: string;
   private modelName: string;
+  private readonly AVAILABLE_MODELS = [
+    "deepseek-reasoner",
+    "deepseek-chat",
+  ] as const;
 
   /**
    * Creates a new AIService instance
    * @param config The AI service configuration
    */
   constructor(config: AIConfig) {
-    this.config = config;
-    this.modelName = config.model || "gpt-3.5-turbo";
-    this.openaiApiKey = config.apiKey;
-
-    // Get DashScope API key from environment variable
+    this.modelName = this.validateModel(config.model) || "deepseek-reasoner";
     this.dashscopeApiKey = process.env.DASHSCOPE_API_KEY || "";
 
     if (!this.dashscopeApiKey) {
@@ -32,9 +32,31 @@ export class AIService implements IAIService {
       );
     }
 
-    if (!this.openaiApiKey) {
-      console.warn("OpenAI API key is not set. Text generation will not work.");
+    if (!config.apiKey) {
+      console.warn(
+        "Deepseek API key is not set. Text generation will not work."
+      );
     }
+  }
+
+  /**
+   * Switch between available models
+   * @param modelName The model to switch to
+   */
+  public switchModel(modelName: (typeof this.AVAILABLE_MODELS)[number]): void {
+    this.modelName = this.validateModel(modelName) || this.modelName;
+  }
+
+  /**
+   * Validate if the model name is supported
+   * @param modelName The model name to validate
+   */
+  private validateModel(
+    modelName?: string
+  ): (typeof this.AVAILABLE_MODELS)[number] | undefined {
+    return modelName && this.AVAILABLE_MODELS.includes(modelName as any)
+      ? (modelName as (typeof this.AVAILABLE_MODELS)[number])
+      : undefined;
   }
 
   /**
@@ -47,47 +69,19 @@ export class AIService implements IAIService {
     options?: SummaryOptions
   ): Promise<string> {
     const maxLength = options?.maxLength || 250;
-    const style = options?.style || "concise";
-
-    // Create the system message based on style
-    let systemMessage = "You are a professional content summarizer. ";
-
-    if (style === "concise") {
-      systemMessage += "Create concise and to-the-point summaries.";
-    } else if (style === "detailed") {
-      systemMessage += "Create detailed summaries that highlight key points.";
-    } else if (style === "technical") {
-      systemMessage +=
-        "Create technical summaries focusing on technical aspects using appropriate terminology.";
-    } else {
-      systemMessage += "Create casual, conversational summaries.";
-    }
 
     try {
-      // Use OpenAI API directly
-      const response = await axios.post(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          model: this.modelName,
-          messages: [
-            { role: "system", content: systemMessage },
-            {
-              role: "user",
-              content: `Summarize the following content in ${maxLength} characters or less:\n\n${content}`,
-            },
-          ],
-          max_tokens: Math.ceil(maxLength / 4), // Approximate token count
-          temperature: 0.7,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.openaiApiKey}`,
-            "Content-Type": "application/json",
+      const { text } = await generateText({
+        model: deepseek(this.modelName),
+        messages: [
+          {
+            role: "user",
+            content: `You are an expert summarizer. Your task is to create concise, informative summaries that capture the key points of technical articles. Please provide a concise summary (maximum 3 sentences) of the following technical article. Highlight the key technologies, concepts, and takeaways. Do NOT include "Summary:" or any other prefix in your response, just provide the summary directly:\n\n${content}`,
           },
-        }
-      );
+        ],
+      });
 
-      const summary = response.data.choices[0]?.message?.content?.trim() || "";
+      const summary = text.trim();
 
       // Ensure the summary is within the maxLength constraint
       return summary.length > maxLength
@@ -115,38 +109,20 @@ export class AIService implements IAIService {
     const truncatedContent =
       content.length > 2000 ? content.substring(0, 2000) + "..." : content;
 
-    let prompt = "";
-    if (currentTitle) {
-      prompt = `Based on the following content, suggest an improved, engaging title that is SEO-friendly. The current title is "${currentTitle}", but feel free to suggest a completely different title if appropriate. Title should be no longer than ${maxLength} characters:\n\n${truncatedContent}`;
-    } else {
-      prompt = `Create an engaging, SEO-friendly title for the following content, no longer than ${maxLength} characters:\n\n${truncatedContent}`;
-    }
-
     try {
-      // Use OpenAI API directly
-      const response = await axios.post(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          model: this.modelName,
-          messages: [
-            {
-              role: "system",
-              content: "You are a professional headline writer and SEO expert.",
-            },
-            { role: "user", content: prompt },
-          ],
-          max_tokens: 50, // Titles are short
-          temperature: 0.8, // Allow some creativity
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.openaiApiKey}`,
-            "Content-Type": "application/json",
+      const { text } = await generateText({
+        model: deepseek(this.modelName),
+        messages: [
+          {
+            role: "user",
+            content: currentTitle
+              ? `Based on the following content, suggest an improved, engaging, and SEO-friendly title. The current title is "${currentTitle}", but feel free to suggest a completely different title if appropriate. Title should be no longer than ${maxLength} characters:\n\n${truncatedContent}`
+              : `Create an engaging, SEO-friendly title for the following content, no longer than ${maxLength} characters:\n\n${truncatedContent}`,
           },
-        }
-      );
+        ],
+      });
 
-      let title = response.data.choices[0]?.message?.content?.trim() || "";
+      let title = text.trim();
 
       // Remove quotes if present (AI often puts titles in quotes)
       title = title.replace(/^['"](.*)['"]$/, "$1");
@@ -172,34 +148,18 @@ export class AIService implements IAIService {
     const truncatedContent =
       content.length > 3000 ? content.substring(0, 3000) + "..." : content;
 
-    const prompt = `Extract ${maxKeywords} relevant keywords or keyphrases from the following content. Provide them as a comma-separated list. Focus on terms that would work well as tags or for SEO:\n\n${truncatedContent}`;
-
     try {
-      // Use OpenAI API directly
-      const response = await axios.post(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          model: this.modelName,
-          messages: [
-            {
-              role: "system",
-              content: "You are an SEO expert and keyword analyst.",
-            },
-            { role: "user", content: prompt },
-          ],
-          max_tokens: 150,
-          temperature: 0.5, // Lower temperature for more focused responses
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.openaiApiKey}`,
-            "Content-Type": "application/json",
+      const { text } = await generateText({
+        model: deepseek(this.modelName),
+        messages: [
+          {
+            role: "user",
+            content: `Extract ${maxKeywords} relevant keywords or keyphrases from the following content. Provide them as a comma-separated list. Focus on terms that would work well as tags or for SEO:\n\n${truncatedContent}`,
           },
-        }
-      );
+        ],
+      });
 
-      const keywordsText =
-        response.data.choices[0]?.message?.content?.trim() || "";
+      const keywordsText = text.trim();
 
       // Split by commas and clean up each keyword
       const keywords = keywordsText
@@ -216,6 +176,41 @@ export class AIService implements IAIService {
         .split(/\s+/)
         .filter((word: string) => word.length > 5)
         .slice(0, maxKeywords);
+    }
+  }
+
+  /**
+   * Validates the content based on business rules
+   * @param content The content to validate
+   * @param rules The validation rules to apply
+   */
+  async validateContent(content: string, rules: string[]): Promise<boolean> {
+    // Truncate content if too long
+    const truncatedContent =
+      content.length > 3000 ? content.substring(0, 3000) + "..." : content;
+
+    // Format rules into a readable string
+    const rulesText = rules
+      .map((rule, index) => `Rule ${index + 1}: ${rule}`)
+      .join("\n");
+
+    try {
+      const { text } = await generateText({
+        model: deepseek(this.modelName),
+        messages: [
+          {
+            role: "user",
+            content: `Validate if the following content complies with all the rules specified. Respond with ONLY "true" if all rules are satisfied, or "false" if any rule is violated.\n\nRULES:\n${rulesText}\n\nCONTENT:\n${truncatedContent}`,
+          },
+        ],
+      });
+
+      const result = text.trim().toLowerCase();
+      return result === "true";
+    } catch (error) {
+      console.error("Error validating content:", error);
+      // Conservative approach: if validation fails, assume content doesn't meet rules
+      return false;
     }
   }
 
@@ -306,6 +301,7 @@ export class AIService implements IAIService {
         return {
           url: "",
           prompt,
+          taskId,
           success: false,
           error: "Failed to get image URL from DashScope API",
         };
@@ -322,6 +318,7 @@ export class AIService implements IAIService {
             url: imageUrl,
             localPath,
             prompt,
+            taskId,
             success: true,
           };
         } catch (error) {
@@ -329,6 +326,7 @@ export class AIService implements IAIService {
           return {
             url: "",
             prompt,
+            taskId,
             success: false,
             error: error instanceof Error ? error.message : String(error),
           };
@@ -338,6 +336,7 @@ export class AIService implements IAIService {
       return {
         url: imageUrl,
         prompt,
+        taskId,
         success: true,
       };
     } catch (error) {
@@ -419,58 +418,6 @@ export class AIService implements IAIService {
     } catch (error) {
       console.error("Error checking task status:", error);
       return null;
-    }
-  }
-
-  /**
-   * Validates the content based on business rules
-   * @param content The content to validate
-   * @param rules The validation rules to apply
-   */
-  async validateContent(content: string, rules: string[]): Promise<boolean> {
-    // Truncate content if too long
-    const truncatedContent =
-      content.length > 3000 ? content.substring(0, 3000) + "..." : content;
-
-    // Format rules into a readable string
-    const rulesText = rules
-      .map((rule, index) => `Rule ${index + 1}: ${rule}`)
-      .join("\n");
-
-    const prompt = `Validate if the following content complies with all the rules specified. Respond with ONLY "true" if all rules are satisfied, or "false" if any rule is violated.\n\nRULES:\n${rulesText}\n\nCONTENT:\n${truncatedContent}`;
-
-    try {
-      // Use OpenAI API directly
-      const response = await axios.post(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          model: this.modelName,
-          messages: [
-            {
-              role: "system",
-              content:
-                'You are a content validator checking if text complies with specified rules. You respond with ONLY "true" or "false".',
-            },
-            { role: "user", content: prompt },
-          ],
-          max_tokens: 10,
-          temperature: 0.1, // Very low temperature for consistent responses
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${this.openaiApiKey}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      const result =
-        response.data.choices[0]?.message?.content?.trim().toLowerCase() || "";
-      return result === "true";
-    } catch (error) {
-      console.error("Error validating content:", error);
-      // Conservative approach: if validation fails, assume content doesn't meet rules
-      return false;
     }
   }
 

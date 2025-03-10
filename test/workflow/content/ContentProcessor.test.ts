@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { IAIService } from "../../../src/core/ai/AIService.interface";
 import { INotionContent } from "../../../src/core/notion/NotionContent.interface";
-import { Category, ContentPage, ImageResult } from "../../../src/types";
+import { Category, ContentPage, ImageResult, Status } from "../../../src/types";
 import { ContentProcessor } from "../../../src/workflow/content/ContentProcessor";
 
 describe("ContentProcessor", () => {
@@ -23,6 +23,7 @@ describe("ContentProcessor", () => {
       parentId: sourcePageId,
       category: "Category 1",
       content: "This is the content of test page 1.",
+      status: Status.Draft,
       createdTime: "2023-01-01T00:00:00Z",
       lastEditedTime: "2023-01-02T00:00:00Z",
     },
@@ -32,6 +33,7 @@ describe("ContentProcessor", () => {
       parentId: sourcePageId,
       category: "Category 2",
       content: "This is the content of test page 2.",
+      status: Status.Draft,
       createdTime: "2023-01-03T00:00:00Z",
       lastEditedTime: "2023-01-04T00:00:00Z",
     },

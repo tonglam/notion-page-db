@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { INotionDatabase } from "../../../src/core/notion/NotionDatabase.interface";
-import { ContentPage, NotionEntry } from "../../../src/types";
+import { ContentPage, NotionEntry, Status } from "../../../src/types";
 import { DatabaseUpdater } from "../../../src/workflow/database/DatabaseUpdater";
 
 describe("DatabaseUpdater", () => {
@@ -16,6 +16,7 @@ describe("DatabaseUpdater", () => {
         "Original Page": { url: "https://www.notion.so/entry1id" },
         Title: { title: [{ text: { content: "Existing Page 1" } }] },
         Category: { select: { name: "Category 1" } },
+        Status: { select: { name: Status.Draft } },
       },
       url: "https://notion.so/entry1",
       created_time: "2023-01-01T00:00:00Z",
@@ -27,6 +28,7 @@ describe("DatabaseUpdater", () => {
         "Original Page": { url: "https://www.notion.so/entry2id" },
         Title: { title: [{ text: { content: "Existing Page 2" } }] },
         Category: { select: { name: "Category 2" } },
+        Status: { select: { name: Status.Ready } },
       },
       url: "https://notion.so/entry2",
       created_time: "2023-01-03T00:00:00Z",
@@ -46,6 +48,7 @@ describe("DatabaseUpdater", () => {
       tags: ["tag1", "tag2"],
       minsRead: 5,
       imageUrl: "https://example.com/image1.jpg",
+      status: Status.Draft,
       createdTime: "2023-01-01T00:00:00Z",
       lastEditedTime: "2023-01-02T00:00:00Z",
     },
@@ -59,6 +62,7 @@ describe("DatabaseUpdater", () => {
       excerpt: "Excerpt of new page",
       tags: ["tag3", "tag4"],
       minsRead: 8,
+      status: Status.Ready,
       createdTime: "2023-01-05T00:00:00Z",
       lastEditedTime: "2023-01-06T00:00:00Z",
     },
@@ -70,6 +74,12 @@ describe("DatabaseUpdater", () => {
 
     // Create mock for NotionDatabase
     notionDatabase = {
+      client: {} as any,
+      getDatabaseId: vi.fn().mockReturnValue(databaseId),
+      setDatabaseId: vi.fn(),
+      findDatabaseByName: vi.fn(),
+      initializeDatabase: vi.fn(),
+      upsertEntry: vi.fn(),
       verifyDatabase: vi.fn().mockResolvedValue(true),
       createDatabase: vi.fn().mockResolvedValue("new-database-id"),
       queryEntries: vi.fn().mockResolvedValue(mockEntries),

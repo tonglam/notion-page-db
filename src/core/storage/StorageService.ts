@@ -293,29 +293,29 @@ export class StorageService implements IStorageService {
     const extension = path.extname(key).toLowerCase();
 
     switch (extension) {
-    case ".jpg":
-    case ".jpeg":
-      return "image/jpeg";
-    case ".png":
-      return "image/png";
-    case ".gif":
-      return "image/gif";
-    case ".webp":
-      return "image/webp";
-    case ".pdf":
-      return "application/pdf";
-    case ".json":
-      return "application/json";
-    case ".txt":
-      return "text/plain";
-    case ".html":
-      return "text/html";
-    case ".css":
-      return "text/css";
-    case ".js":
-      return "application/javascript";
-    default:
-      return "application/octet-stream";
+      case ".jpg":
+      case ".jpeg":
+        return "image/jpeg";
+      case ".png":
+        return "image/png";
+      case ".gif":
+        return "image/gif";
+      case ".webp":
+        return "image/webp";
+      case ".pdf":
+        return "application/pdf";
+      case ".json":
+        return "application/json";
+      case ".txt":
+        return "text/plain";
+      case ".html":
+        return "text/html";
+      case ".css":
+        return "text/css";
+      case ".js":
+        return "application/javascript";
+      default:
+        return "application/octet-stream";
     }
   }
 }

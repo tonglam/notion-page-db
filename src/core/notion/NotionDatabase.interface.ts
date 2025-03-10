@@ -1,3 +1,4 @@
+import { Client } from "@notionhq/client";
 import {
   DatabaseSchema,
   EntryData,
@@ -10,6 +11,11 @@ import {
  * Manages all interactions with the Notion database API
  */
 export interface INotionDatabase {
+  /**
+   * The Notion API client instance
+   */
+  client: Client;
+
   /**
    * Gets the current database ID
    * @returns The current database ID or undefined
@@ -36,9 +42,13 @@ export interface INotionDatabase {
   /**
    * Initializes the database by finding it by name or creating it if needed
    * @param parentPageId The parent page ID to create the database under if needed
+   * @param schema Optional schema to use when creating the database
    * @returns The database ID
    */
-  initializeDatabase(parentPageId?: string): Promise<string>;
+  initializeDatabase(
+    parentPageId?: string,
+    schema?: DatabaseSchema
+  ): Promise<string>;
 
   /**
    * Creates a new database with the specified schema
@@ -46,6 +56,14 @@ export interface INotionDatabase {
    * @param parentPageId The parent page ID to create the database under
    */
   createDatabase(schema: DatabaseSchema, parentPageId: string): Promise<string>;
+
+  /**
+   * Creates or updates an entry in the database based on title
+   * If an entry with the same title exists, it will be updated
+   * @param data The data for the entry
+   * @returns Object containing the entry ID and whether it was created or updated
+   */
+  upsertEntry(data: EntryData): Promise<{ id: string; isNew: boolean }>;
 
   /**
    * Queries entries from the database
